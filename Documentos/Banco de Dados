@@ -1,0 +1,253 @@
+-- =====================================================
+-- ArtConnect - Modelo físico (PostgreSQL / Supabase)
+-- Execute no SQL Editor do Supabase, de cima para baixo.
+-- =====================================================
+ 
+-- ---------- TIPOS (ENUMs) ----------
+CREATE TYPE papel_usuario    AS ENUM ('cliente', 'artista', 'admin');
+CREATE TYPE tipo_evento      AS ENUM ('casamento', 'corporativo', 'aniversario', 'formatura', 'outro');
+CREATE TYPE status_orcamento AS ENUM ('aberto', 'com_propostas', 'fechado', 'cancelado');
+CREATE TYPE status_proposta  AS ENUM ('enviada', 'aceita', 'recusada');
+CREATE TYPE status_contrato  AS ENUM ('aguardando_pagamento', 'valor_retido', 'concluido', 'cancelado');
+CREATE TYPE status_pagamento AS ENUM ('pendente', 'retido', 'liberado', 'reembolsado');
+CREATE TYPE status_suporte   AS ENUM ('aberto', 'em_andamento', 'resolvido');
+ 
+-- ---------- USUÁRIOS ----------
+-- Estende a tabela auth.users do Supabase
+CREATE TABLE profiles (
+    id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    nome        TEXT NOT NULL,
+    email       TEXT UNIQUE NOT NULL,
+    telefone    TEXT,
+    cidade      TEXT,
+    papel       papel_usuario NOT NULL DEFAULT 'cliente',
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+-- ---------- CATEGORIAS ----------
+-- Chefs & Buffet, Mágicos, DJs, Cantores, Foto & Vídeo
+CREATE TABLE categorias (
+    id          SERIAL PRIMARY KEY,
+    nome        TEXT NOT NULL UNIQUE,
+    slug        TEXT NOT NULL UNIQUE,
+    descricao   TEXT
+);
+ 
+-- ---------- ARTISTAS ----------
+CREATE TABLE artistas (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID UNIQUE REFERENCES profiles(id) ON DELETE SET NULL,
+    nome_artistico  TEXT NOT NULL,
+    categoria_id    INT  NOT NULL REFERENCES categorias(id),
+    estilo          TEXT,                       -- ex.: Eletrônico, Jazz & MPB
+    cidade          TEXT NOT NULL,
+    preco_minimo    NUMERIC(10,2) NOT NULL CHECK (preco_minimo >= 0),  -- "a partir de"
+    descricao       TEXT,
+    foto_url        TEXT,
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+CREATE INDEX idx_artistas_categoria_cidade ON artistas (categoria_id, cidade);
+ 
+-- ---------- EVENTOS (brief do evento / tela "Encontrar Artistas") ----------
+CREATE TABLE eventos (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cliente_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    tipo            tipo_evento NOT NULL,
+    categoria_id    INT  NOT NULL REFERENCES categorias(id),
+    data_evento     DATE,                       -- "A definir" = NULL
+    localizacao     TEXT,                       -- cidade ou região
+    orcamento       NUMERIC(10,2) CHECK (orcamento >= 0),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+CREATE INDEX idx_eventos_cliente ON eventos (cliente_id);
+ 
+-- ---------- PEDIDOS DE ORÇAMENTO (tela "Conte os detalhes do serviço") ----------
+CREATE TABLE pedidos_orcamento (
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    evento_id             UUID NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    categoria_id          INT  NOT NULL REFERENCES categorias(id),  -- tipo de serviço
+    data_evento           DATE NOT NULL,
+    horario_inicio        TIME NOT NULL,
+    duracao_horas         NUMERIC(4,1) NOT NULL CHECK (duracao_horas > 0),
+    estimativa_convidados INT NOT NULL CHECK (estimativa_convidados > 0),
+    local                 TEXT NOT NULL,        -- espaço, bairro e cidade
+    observacoes           TEXT CHECK (char_length(observacoes) <= 600),
+    status                status_orcamento NOT NULL DEFAULT 'aberto',
+    criado_em             TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+-- ---------- PROPOSTAS (resposta dos artistas aos pedidos) ----------
+CREATE TABLE propostas (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pedido_id   UUID NOT NULL REFERENCES pedidos_orcamento(id) ON DELETE CASCADE,
+    artista_id  UUID NOT NULL REFERENCES artistas(id),
+    valor       NUMERIC(10,2) NOT NULL CHECK (valor >= 0),
+    mensagem    TEXT,
+    status      status_proposta NOT NULL DEFAULT 'enviada',
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (pedido_id, artista_id)
+);
+ 
+-- ---------- CONTRATOS (painel: "Ver contrato") ----------
+CREATE TABLE contratos (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    evento_id     UUID NOT NULL REFERENCES eventos(id),
+    proposta_id   UUID UNIQUE REFERENCES propostas(id),
+    cliente_id    UUID NOT NULL REFERENCES profiles(id),
+    artista_id    UUID NOT NULL REFERENCES artistas(id),
+    descricao     TEXT,                         -- ex.: "Set de 3 horas"
+    data_evento   DATE NOT NULL,
+    local         TEXT NOT NULL,                -- ex.: "Espaço Jardim Ipê, São Paulo"
+    valor_total   NUMERIC(10,2) NOT NULL CHECK (valor_total >= 0),
+    status        status_contrato NOT NULL DEFAULT 'aguardando_pagamento',
+    criado_em     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+CREATE INDEX idx_contratos_cliente ON contratos (cliente_id);
+CREATE INDEX idx_contratos_artista ON contratos (artista_id);
+ 
+-- ---------- PAGAMENTOS (pagamento retido até o dia do evento) ----------
+CREATE TABLE pagamentos (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    contrato_id     UUID NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
+    valor           NUMERIC(10,2) NOT NULL CHECK (valor > 0),
+    metodo          TEXT,                       -- pix, cartão etc.
+    status          status_pagamento NOT NULL DEFAULT 'pendente',
+    pago_em         TIMESTAMPTZ,
+    liberado_em     TIMESTAMPTZ,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+-- ---------- AVALIAÇÕES ----------
+CREATE TABLE avaliacoes (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    contrato_id   UUID NOT NULL UNIQUE REFERENCES contratos(id) ON DELETE CASCADE,
+    artista_id    UUID NOT NULL REFERENCES artistas(id) ON DELETE CASCADE,
+    cliente_id    UUID NOT NULL REFERENCES profiles(id),
+    nota          SMALLINT NOT NULL CHECK (nota BETWEEN 1 AND 5),
+    comentario    TEXT,
+    criado_em     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+-- ---------- MENSAGENS (aba "Mensagens") ----------
+CREATE TABLE mensagens (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    contrato_id      UUID REFERENCES contratos(id) ON DELETE CASCADE,
+    remetente_id     UUID NOT NULL REFERENCES profiles(id),
+    destinatario_id  UUID NOT NULL REFERENCES profiles(id),
+    conteudo         TEXT NOT NULL,
+    lida             BOOLEAN NOT NULL DEFAULT FALSE,
+    enviada_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+CREATE INDEX idx_mensagens_destinatario ON mensagens (destinatario_id, lida);
+ 
+-- ---------- SUPORTE (aba "Suporte") ----------
+CREATE TABLE chamados_suporte (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    assunto     TEXT NOT NULL,
+    descricao   TEXT NOT NULL,
+    status      status_suporte NOT NULL DEFAULT 'aberto',
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ 
+-- =====================================================
+-- VIEWS
+-- =====================================================
+ 
+-- Artistas com nota média (cards "Talentos mais bem avaliados")
+CREATE VIEW vw_artistas AS
+SELECT a.*,
+       c.nome AS categoria,
+       ROUND(AVG(av.nota), 1) AS nota_media,
+       COUNT(av.id)           AS total_avaliacoes
+FROM artistas a
+JOIN categorias c ON c.id = a.categoria_id
+LEFT JOIN avaliacoes av ON av.artista_id = a.id
+GROUP BY a.id, c.nome;
+ 
+-- Indicadores do painel do cliente
+CREATE VIEW vw_painel_cliente AS
+SELECT
+    p.id AS cliente_id,
+    (SELECT COUNT(*) FROM contratos c
+      WHERE c.cliente_id = p.id AND c.data_evento >= CURRENT_DATE
+        AND c.status IN ('aguardando_pagamento', 'valor_retido'))   AS proximos_eventos,
+    (SELECT COALESCE(SUM(pg.valor), 0) FROM pagamentos pg
+      JOIN contratos c ON c.id = pg.contrato_id
+      WHERE c.cliente_id = p.id AND pg.status = 'retido')            AS valor_retido,
+    (SELECT COALESCE(SUM(c.valor_total), 0) FROM contratos c
+      WHERE c.cliente_id = p.id AND c.status <> 'cancelado')         AS total_contratado,
+    (SELECT COUNT(*) FROM mensagens m
+      WHERE m.destinatario_id = p.id AND m.lida = FALSE)             AS mensagens_novas
+FROM profiles p;
+ 
+-- =====================================================
+-- DADOS INICIAIS
+-- =====================================================
+INSERT INTO categorias (nome, slug, descricao) VALUES
+ ('Chefs & Buffet', 'chefs-buffet', 'Menus autorais, buffet e equipe de salão'),
+ ('Mágicos',        'magicos',      'Mágica de perto, mentalismo e shows de palco'),
+ ('DJs',            'djs',          'Sets sob medida com som e iluminação'),
+ ('Cantores',       'cantores',     'Voz e violão, trio ou banda completa'),
+ ('Foto & Vídeo',   'foto-video',   'Cobertura documental e filmes de evento');
+ 
+-- =====================================================
+-- SEGURANÇA (RLS) - regras básicas para o Supabase
+-- =====================================================
+ALTER TABLE profiles          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categorias        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE artistas          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE eventos           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pedidos_orcamento ENABLE ROW LEVEL SECURITY;
+ALTER TABLE propostas         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contratos         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pagamentos        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE avaliacoes        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mensagens         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chamados_suporte  ENABLE ROW LEVEL SECURITY;
+ 
+-- Leitura pública: categorias, artistas ativos e avaliações
+CREATE POLICY "categorias_publicas" ON categorias FOR SELECT USING (true);
+CREATE POLICY "artistas_publicos"   ON artistas   FOR SELECT USING (ativo);
+CREATE POLICY "avaliacoes_publicas" ON avaliacoes FOR SELECT USING (true);
+ 
+-- Perfil: cada um vê e edita o próprio
+CREATE POLICY "perfil_proprio_select" ON profiles FOR SELECT USING (id = auth.uid());
+CREATE POLICY "perfil_proprio_update" ON profiles FOR UPDATE USING (id = auth.uid());
+ 
+-- Eventos: só o cliente dono
+CREATE POLICY "eventos_do_cliente" ON eventos
+    FOR ALL USING (cliente_id = auth.uid()) WITH CHECK (cliente_id = auth.uid());
+ 
+-- Pedidos de orçamento: via dono do evento
+CREATE POLICY "pedidos_do_cliente" ON pedidos_orcamento
+    FOR ALL USING (EXISTS (SELECT 1 FROM eventos e
+                           WHERE e.id = evento_id AND e.cliente_id = auth.uid()));
+ 
+-- Contratos: cliente ou o artista do contrato
+CREATE POLICY "contratos_participantes" ON contratos
+    FOR SELECT USING (
+        cliente_id = auth.uid()
+        OR EXISTS (SELECT 1 FROM artistas a WHERE a.id = artista_id AND a.user_id = auth.uid())
+    );
+ 
+-- Pagamentos: visíveis para o cliente do contrato
+CREATE POLICY "pagamentos_do_cliente" ON pagamentos
+    FOR SELECT USING (EXISTS (SELECT 1 FROM contratos c
+                              WHERE c.id = contrato_id AND c.cliente_id = auth.uid()));
+ 
+-- Mensagens: quem enviou ou recebeu
+CREATE POLICY "mensagens_participantes" ON mensagens
+    FOR SELECT USING (remetente_id = auth.uid() OR destinatario_id = auth.uid());
+CREATE POLICY "mensagens_enviar" ON mensagens
+    FOR INSERT WITH CHECK (remetente_id = auth.uid());
+ 
+-- Suporte: só o próprio usuário
+CREATE POLICY "suporte_proprio" ON chamados_suporte
+    FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+ 
