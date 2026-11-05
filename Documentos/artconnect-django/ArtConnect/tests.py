@@ -4,6 +4,7 @@ Rodar:  python manage.py test
 O Django cria um banco de teste separado e coloca os dados de exemplo nele.
 """
 import re
+from io import StringIO
 from datetime import date, timedelta
 
 from django.contrib.auth.models import User
@@ -13,7 +14,7 @@ from django.utils import timezone
 
 from ArtConnect.dados_exemplo import SENHA_PADRAO, popular
 from ArtConnect.match import calcular_compatibilidade
-from ArtConnect.models import (Artista, Avaliacao, Cancelamento, Categoria, ChamadoSuporte, Contrato, Denuncia, Disponibilidade,
+from ArtConnect.models import (Artista, Avaliacao, Cancelamento, Categoria, ChamadoSuporte, Contrato, Cupom, Denuncia, Disponibilidade,
                                Favorito, Mensagem, Notificacao, Pagamento, PedidoOrcamento, Perfil, Portfolio,
                                Proposta, TokenSenha)
 from ArtConnect.politicas import dividir_valor, link_embed, percentual_reembolso
@@ -1000,3 +1001,15 @@ class TestLembretes(BaseArtConnect):
         Contrato.objects.filter(artista__nome_artistico="Neon Sombra").update(
             data_evento=date.today() + timedelta(days=2), status="cancelado")
         self.assertEqual(gerar_lembretes(), 0)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class TestPopularBancoAntigo(TestCase):
+    def test_banco_sem_cupons_recebe_os_de_exemplo(self):
+        from django.core.management import call_command
+        popular(mostrar=False)
+        Cupom.objects.all().delete()
+        call_command("popular_banco", stdout=StringIO())
+        self.assertTrue(Cupom.objects.filter(codigo="BEMVINDO10").exists())
+        call_command("popular_banco", stdout=StringIO())
+        self.assertEqual(Cupom.objects.filter(codigo="BEMVINDO10").count(), 1)

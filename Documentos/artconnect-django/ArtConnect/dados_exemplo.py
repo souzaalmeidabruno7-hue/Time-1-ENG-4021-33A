@@ -204,9 +204,7 @@ def popular(mostrar=True):
         Portfolio.objects.create(artista=artista(nome), tipo=tipo, titulo=titulo, url=url)
 
     avisar(mostrar, "Inserindo cupons, chamado de suporte e resposta de avaliação (Sprint 8)...")
-    for codigo, descricao, tipo, valor, minimo, maximo, validade in CUPONS:
-        Cupom.objects.create(codigo=codigo, descricao=descricao, tipo=tipo, valor=valor, valor_minimo=minimo,
-                             desconto_maximo=maximo, validade=date.fromisoformat(validade))
+    popular_cupons()
 
     chamado = ChamadoSuporte.objects.create(
         user=usuario("luiz"), categoria="pagamento",
@@ -225,3 +223,10 @@ def popular(mostrar=True):
     avaliacao.save()
 
     avisar(mostrar, "Banco populado! Usuário de teste: luiz / senha: " + SENHA_PADRAO)
+
+
+def popular_cupons():
+    """Cria os cupons de exemplo. Usada também em bancos que já tinham dados antes da Sprint 8."""
+    for codigo, descricao, tipo, valor, minimo, maximo, validade in CUPONS:
+        Cupom.objects.create(codigo=codigo, descricao=descricao, tipo=tipo, valor=valor, valor_minimo=minimo,
+                             desconto_maximo=maximo, validade=date.fromisoformat(validade))
