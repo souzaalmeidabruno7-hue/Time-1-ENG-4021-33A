@@ -1,0 +1,89 @@
+{% load static l10n %}{% localize off %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}ArtConnect{% endblock %} · ArtConnect</title>
+  <meta name="description" content="{% block descricao %}Encontre e contrate artistas locais para o seu evento com score de compatibilidade.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body class="min-h-screen bg-paper font-body text-ink antialiased">
+
+  <header class="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur">
+    <div class="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3 md:px-8">
+      <a href="{% url 'index' %}" class="flex items-center gap-2">
+        <span class="size-3 rounded-full bg-stage"></span>
+        <span class="font-display text-2xl leading-none tracking-tight">ArtConnect</span>
+      </a>
+
+      <nav aria-label="Navegação principal" class="order-3 flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-medium lg:order-none lg:w-auto">
+        <a href="{% url 'index' %}" class="text-ink-soft transition-colors hover:text-ink">Início</a>
+        <a href="{% url 'index' %}#artistas" class="text-ink-soft transition-colors hover:text-ink">Artistas</a>
+        {% if usuario_nome %}
+          {% if usuario_papel == 'artista' %}
+            <a href="{% url 'artista_painel' %}" class="text-ink-soft transition-colors hover:text-ink">Meu painel</a>
+          {% elif usuario_papel == 'admin' %}
+            <a href="{% url 'admin_dashboard' %}" class="text-ink-soft transition-colors hover:text-ink">Dashboard</a>
+            <a href="{% url 'listar_usuarios' %}" class="text-ink-soft transition-colors hover:text-ink">Usuários</a>
+            <a href="{% url 'admin_denuncias' %}" class="text-ink-soft transition-colors hover:text-ink">Denúncias</a>
+          {% else %}
+            <a href="{% url 'orcamento' %}" class="text-ink-soft transition-colors hover:text-ink">Orçamento</a>
+            <a href="{% url 'painel' %}" class="text-ink-soft transition-colors hover:text-ink">Meu painel</a>
+          {% endif %}
+          <a href="{% url 'notificacoes' %}" class="relative inline-flex items-center gap-1.5 text-ink-soft transition-colors hover:text-ink" aria-label="Notificações{% if notificacoes_novas %} ({{ notificacoes_novas }} novas){% endif %}">
+            <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            Avisos{% if notificacoes_novas %}<span class="rounded-full bg-stage px-1.5 py-0.5 font-mono text-[10px] leading-none text-cream">{{ notificacoes_novas }}</span>{% endif %}
+          </a>
+          <a href="{% url 'editar_perfil' %}" class="text-ink-soft transition-colors hover:text-ink">Perfil</a>
+          <a href="{% url 'logout' %}" class="text-ink-soft transition-colors hover:text-ink">Sair</a>
+        {% else %}
+          <a href="{% url 'login' %}" class="text-ink-soft transition-colors hover:text-ink">Entrar</a>
+          <a href="{% url 'cadastro' %}?tipo=artista" class="font-semibold text-stage transition-colors hover:text-ink">Sou artista</a>
+        {% endif %}
+      </nav>
+
+      {% if usuario_papel == 'artista' %}
+        <a href="{% url 'artista_painel' %}?aba=pedidos" class="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream ring-1 ring-black/5 transition-colors hover:bg-stage">Ver pedidos</a>
+      {% elif usuario_papel == 'admin' %}
+        <a href="{% url 'admin_dashboard' %}" class="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream ring-1 ring-black/5 transition-colors hover:bg-stage">Dashboard</a>
+      {% elif usuario_nome %}
+        <a href="{% url 'orcamento' %}" class="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream ring-1 ring-black/5 transition-colors hover:bg-stage">Pedir orçamento</a>
+      {% else %}
+        <a href="{% url 'cadastro' %}" class="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream ring-1 ring-black/5 transition-colors hover:bg-stage">Criar conta</a>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if messages %}
+      <div class="mx-auto max-w-6xl px-5 pt-6 md:px-8">
+        <ul class="space-y-2" role="status">
+          {% for mensagem in messages %}
+            <li class="rounded-2xl border px-5 py-3 text-sm font-medium ring-1 ring-black/5 {% if mensagem.tags == 'erro' %}border-stage/40 bg-stage/10 text-stage-deep{% else %}border-ok/30 bg-ok/10 text-ok{% endif %}">{{ mensagem }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+  {% block corpo %}{% endblock %}
+
+  <footer class="border-t border-line">
+    <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-5 py-10 sm:flex-row sm:items-center md:px-8">
+      <div class="flex items-center gap-2">
+        <span class="size-3 rounded-full bg-stage"></span>
+        <span class="font-display text-xl tracking-tight">ArtConnect</span>
+      </div>
+      <nav aria-label="Rodapé" class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-soft">
+        <a href="{% url 'cadastro' %}?tipo=artista" class="hover:text-stage">Seja um artista</a>
+        <a href="{% url 'orcamento' %}" class="hover:text-stage">Pedir orçamento</a>
+        <a href="{% url 'index' %}#artistas" class="hover:text-stage">Explorar artistas</a>
+      </nav>
+      <p class="font-mono text-xs text-ink-soft">© 2026 ArtConnect · Feito para artistas locais no Brasil</p>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>{% endlocalize %}

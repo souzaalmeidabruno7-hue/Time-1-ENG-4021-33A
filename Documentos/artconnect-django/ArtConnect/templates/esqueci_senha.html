@@ -1,0 +1,25 @@
+{% extends "base_auth.html" %}
+{% block titulo %}Esqueci a senha{% endblock %}
+{% block chamada %}Recupere o acesso à sua conta{% endblock %}
+{% block apoio %}Seus orçamentos, contratos e pagamentos continuam guardados. É só criar uma senha nova.{% endblock %}
+
+{% block formulario %}
+  <form action="{% url 'esqueci_senha' %}" method="post">
+    {% csrf_token %}
+    <h2 class="text-3xl font-bold tracking-tight text-ink">Esqueceu a senha?</h2>
+    <p class="mt-2 text-sm text-ink-soft">Informe o e-mail da sua conta. Enviamos um link para você criar uma senha nova.</p>
+
+    <div class="mt-8 space-y-5">
+      <div>
+        <label for="email" class="block text-sm font-medium text-ink">E-mail</label>
+        <input id="email" name="email" type="email" value="{{ email }}" placeholder="voce@exemplo.com" autocomplete="email" required
+               class="mt-2 w-full rounded-lg border border-line bg-white px-4 py-3 text-[0.95rem] text-ink outline-none transition placeholder:text-ink-soft/55 focus-visible:border-stage focus-visible:ring-2 focus-visible:ring-stage/25">
+      </div>
+      <button type="submit" class="w-full rounded-full bg-stage px-6 py-3 text-[0.95rem] font-semibold text-cream transition-colors hover:bg-stage-deep">Enviar link</button>
+    </div>
+
+    <p class="mt-8 text-center text-sm text-ink-soft">
+      Lembrou? <a href="{% url 'login' %}" class="font-semibold text-stage underline-offset-4 hover:underline">Voltar para o login</a>
+    </p>
+  </form>
+{% endblock %}

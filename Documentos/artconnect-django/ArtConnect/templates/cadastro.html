@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Criar conta{% endblock %}
+
+{% block corpo %}
+  <section class="border-y border-line bg-ink text-cream">
+    <div class="mx-auto grid max-w-6xl gap-10 px-5 py-16 md:grid-cols-12 md:px-8 md:py-24">
+      <div class="md:col-span-5">
+        <p class="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-stage">Criar conta</p>
+        <h1 class="text-balance font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Entre para a ArtConnect</h1>
+        <p class="mt-4 max-w-[46ch] text-pretty text-cream/70">
+          Contrate talentos locais para o seu evento ou apresente o seu trabalho para quem procura artistas na sua cidade.
+        </p>
+        <ul class="mt-8 space-y-3 text-sm text-cream/80">
+          <li class="flex gap-3"><span class="text-stage">01</span>Pedidos de orçamento com data, local e convidados</li>
+          <li class="flex gap-3"><span class="text-stage">02</span>Propostas comparadas por compatibilidade</li>
+          <li class="flex gap-3"><span class="text-stage">03</span>Pagamento retido até o dia do evento</li>
+        </ul>
+      </div>
+
+      <form action="{% url 'cadastro' %}" method="post" class="grid gap-5 sm:grid-cols-2 md:col-span-7">
+        {% csrf_token %}
+        <fieldset class="sm:col-span-2">
+          <legend class="{{ ui.rotulo_escuro }}">Eu quero</legend>
+          <div class="mt-2 grid grid-cols-2 gap-3">
+            <label class="relative cursor-pointer">
+              <input type="radio" name="tipo" value="contratante" class="peer sr-only" {% if form.tipo != 'artista' %}checked{% endif %}>
+              <span class="block rounded-xl border border-cream/20 px-4 py-3 text-center transition-colors peer-checked:border-stage peer-checked:bg-stage peer-checked:text-cream peer-focus-visible:ring-2 peer-focus-visible:ring-stage">
+                <b class="block text-sm">Contratar</b><span class="text-xs opacity-75">Tenho um evento</span>
+              </span>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="tipo" value="artista" class="peer sr-only" {% if form.tipo == 'artista' %}checked{% endif %}>
+              <span class="block rounded-xl border border-cream/20 px-4 py-3 text-center transition-colors peer-checked:border-stage peer-checked:bg-stage peer-checked:text-cream peer-focus-visible:ring-2 peer-focus-visible:ring-stage">
+                <b class="block text-sm">Ser contratado</b><span class="text-xs opacity-75">Sou artista</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Usuário</span>
+          <input type="text" name="username" value="{{ form.username }}" autocomplete="username" autocapitalize="none" placeholder="Ex.: maria.souza" required minlength="3" class="{{ ui.campo_escuro }}">
+          <span class="mt-1.5 block text-xs text-cream/40">É com ele que você vai entrar.</span>
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Nome completo</span>
+          <input type="text" name="nome" value="{{ form.nome }}" autocomplete="name" placeholder="Ex.: Maria Souza" required minlength="3" class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="block sm:col-span-2">
+          <span class="{{ ui.rotulo_escuro }}">E-mail</span>
+          <input type="email" name="email" value="{{ form.email }}" autocomplete="email" placeholder="voce@email.com" required class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Telefone / WhatsApp</span>
+          <input type="tel" name="telefone" value="{{ form.telefone }}" autocomplete="tel" inputmode="tel" placeholder="(21) 99999-9999" class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Cidade</span>
+          <input type="text" name="cidade" value="{{ form.cidade }}" autocomplete="address-level2" placeholder="Ex.: Rio de Janeiro" required class="{{ ui.campo_escuro }}">
+        </label>
+
+        <div id="campos-artista" class="hidden gap-5 sm:col-span-2 sm:grid-cols-2">
+          <label class="block">
+            <span class="{{ ui.rotulo_escuro }}">Categoria</span>
+            <select id="categoria" name="categoria" class="{{ ui.campo_escuro }}">
+              <option value="">Selecione…</option>
+              {% for cat in categorias %}
+                <option value="{{ cat.id }}" {% if form.categoria == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.nome }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="{{ ui.rotulo_escuro }}">Cachê a partir de (R$)</span>
+            <input type="text" name="preco" value="{{ form.preco }}" inputmode="decimal" placeholder="Ex.: 800" class="{{ ui.campo_escuro }}">
+          </label>
+        </div>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Senha</span>
+          <input type="password" name="senha" autocomplete="new-password" placeholder="Mínimo de 8 caracteres" required minlength="8" class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Confirmar senha</span>
+          <input type="password" name="confirmar" autocomplete="new-password" placeholder="Repita a senha" required class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="flex items-start gap-3 text-sm text-cream/80 sm:col-span-2">
+          <input type="checkbox" name="termos" required class="mt-0.5 size-4 accent-stage" {% if form.termos == 'on' %}checked{% endif %}>
+          <span>Li e aceito os Termos de Uso e a Política de Privacidade.</span>
+        </label>
+
+        <div class="flex flex-wrap items-center gap-5 sm:col-span-2">
+          <button type="submit" class="rounded-full bg-stage px-7 py-3 font-semibold text-cream ring-1 ring-white/10 transition-colors hover:bg-cream hover:text-ink">Criar conta</button>
+          <p class="text-sm text-cream/60">Já tem conta? <a href="{% url 'login' %}" class="font-semibold text-cream underline underline-offset-4 hover:text-stage">Entrar</a></p>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Mostra categoria e cachê só quando "Ser contratado" estiver marcado
+  var camposArtista = document.getElementById("campos-artista");
+  var radios = document.querySelectorAll('input[name="tipo"]');
+  function atualizarCampos() {
+    var artista = document.querySelector('input[name="tipo"]:checked').value === "artista";
+    camposArtista.classList.toggle("hidden", !artista);
+    camposArtista.classList.toggle("grid", artista);
+    document.getElementById("categoria").required = artista;
+  }
+  for (var i = 0; i < radios.length; i++) {
+    radios[i].addEventListener("change", atualizarCampos);
+  }
+  atualizarCampos();
+</script>
+{% endblock %}

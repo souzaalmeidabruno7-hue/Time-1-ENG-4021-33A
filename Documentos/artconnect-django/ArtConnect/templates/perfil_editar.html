@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Meu perfil{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-3xl px-5 py-14 md:px-8 md:py-20">
+    <p class="{{ ui.rotulo }}">Minha conta</p>
+    <h1 class="mt-3 font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Editar meu perfil</h1>
+    <p class="mt-4 max-w-[60ch] text-pretty text-ink-soft">Mantenha seus dados atualizados para receber as propostas.</p>
+
+    <form action="{% url 'editar_perfil' %}" method="post"
+          class="mt-10 grid gap-5 rounded-2xl border border-line bg-cream p-6 ring-1 ring-black/5 sm:grid-cols-2 md:p-8">
+      {% csrf_token %}
+      <label class="block sm:col-span-2">
+        <span class="{{ ui.rotulo }}">Usuário</span>
+        <input type="text" value="{{ usuario.user.username }}" disabled class="{{ ui.campo_claro }} cursor-not-allowed opacity-60">
+        <span class="mt-1.5 block text-xs text-ink-soft">O nome de usuário não pode ser alterado.</span>
+      </label>
+      <label class="block">
+        <span class="{{ ui.rotulo }}">Nome completo</span>
+        <input type="text" name="nome" value="{{ usuario.nome }}" required minlength="3" class="{{ ui.campo_claro }}">
+      </label>
+      <label class="block">
+        <span class="{{ ui.rotulo }}">E-mail</span>
+        <input type="email" name="email" value="{{ usuario.user.email }}" required class="{{ ui.campo_claro }}">
+      </label>
+      <label class="block">
+        <span class="{{ ui.rotulo }}">Telefone</span>
+        <input type="tel" name="telefone" value="{{ usuario.telefone }}" class="{{ ui.campo_claro }}">
+      </label>
+      <label class="block">
+        <span class="{{ ui.rotulo }}">Cidade</span>
+        <input type="text" name="cidade" value="{{ usuario.cidade }}" class="{{ ui.campo_claro }}">
+      </label>
+      <label class="block sm:col-span-2">
+        <span class="{{ ui.rotulo }}">Nova senha</span>
+        <input type="password" name="nova_senha" autocomplete="new-password" placeholder="Deixe em branco para manter a atual" class="{{ ui.campo_claro }}">
+      </label>
+      <div class="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6 sm:col-span-2">
+        <a href="{% url 'excluir_conta' %}" class="text-sm font-medium text-stage hover:underline">Excluir minha conta</a>
+        <button type="submit" class="rounded-full bg-stage px-6 py-3 text-sm font-semibold text-cream transition-colors hover:bg-ink">Salvar alterações</button>
+      </div>
+    </form>
+  </main>
+{% endblock %}

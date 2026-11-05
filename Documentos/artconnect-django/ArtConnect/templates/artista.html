@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}{{ artista.nome_artistico }}{% endblock %}
+{% block descricao %}{{ artista.nome_artistico }}, {{ artista.categoria }} em {{ artista.cidade }}. Cachê, descrição e avaliações de clientes.{% endblock %}
+
+{% block corpo %}
+  {# ---------- Capa / identidade ---------- #}
+  <section class="border-b border-line bg-ink text-cream">
+    <div class="mx-auto grid max-w-6xl gap-8 px-5 py-14 md:grid-cols-12 md:px-8 md:py-20">
+      <div class="md:col-span-5">
+        {% foto artista "aspect-[4/3] w-full rounded-2xl ring-1 ring-white/10" %}
+      </div>
+      <div class="flex flex-col justify-center md:col-span-7">
+        <p class="font-mono text-xs uppercase tracking-[0.2em] text-stage">
+          {{ artista.categoria }}{% if artista.estilo %} · {{ artista.estilo }}{% endif %} · {{ artista.cidade }}
+        </p>
+        <h1 class="mt-3 font-display text-5xl uppercase leading-[0.95] tracking-tight sm:text-6xl">{{ artista.nome_artistico }}</h1>
+        <div class="mt-4 flex items-center gap-3">
+          {% if artista.nota_media %}
+            {% estrelas artista.nota_media "text-lg" %}
+            <span class="font-medium">{{ artista.nota_media }} · {{ artista.total_avaliacoes }} avaliação{% if artista.total_avaliacoes != 1 %}ões{% endif %}</span>
+          {% else %}
+            {% estrelas 0 "text-lg" %}
+            <span class="font-medium text-cream/70">Novo na plataforma</span>
+          {% endif %}
+        </div>
+        <p class="mt-5 max-w-[56ch] text-pretty text-cream/80">{{ artista.descricao|default:"Este artista ainda não escreveu uma descrição." }}</p>
+        <p class="mt-6 text-sm text-cream/60">
+          Cachê a partir de <span class="font-semibold text-cream">{{ artista.preco_minimo|moeda }}</span>
+        </p>
+        {% if not artista.ativo %}
+          <p class="mt-4 rounded-xl bg-stage/20 px-4 py-2 text-sm text-cream">Perfil suspenso pela moderação: só o administrador vê esta página.</p>
+        {% endif %}
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          {% if usuario_papel == 'cliente' %}
+            <form action="{% url 'alternar_favorito' artista.id %}" method="post">
+              {% csrf_token %}
+              <button type="submit" aria-pressed="{{ favorito|yesno:'true,false' }}"
+                      class="rounded-full px-5 py-2.5 text-sm font-semibold ring-1 transition-colors {% if favorito %}bg-stage text-cream ring-stage hover:bg-cream hover:text-ink{% else %}text-cream ring-cream/30 hover:bg-cream hover:text-ink{% endif %}">
+                {% if favorito %}♥ Salvo nos favoritos{% else %}♡ Salvar nos favoritos{% endif %}
+              </button>
+            </form>
+          {% elif not usuario_nome %}
+            <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="rounded-full px-5 py-2.5 text-sm font-semibold text-cream ring-1 ring-cream/30 transition-colors hover:bg-cream hover:text-ink">♡ Entre para salvar</a>
+          {% endif %}
+          {% if usuario_nome and usuario_papel != 'admin' %}
+            <details class="group relative">
+              <summary class="cursor-pointer list-none rounded-full px-4 py-2.5 text-xs font-semibold text-cream/60 transition-colors hover:text-cream">Denunciar perfil</summary>
+              <form action="{% url 'denunciar' %}" method="post" class="absolute left-0 z-10 mt-2 w-80 space-y-3 rounded-2xl bg-cream p-5 text-ink shadow-xl ring-1 ring-black/10">
+                {% csrf_token %}
+                <input type="hidden" name="alvo" value="artista">
+                <input type="hidden" name="alvo_id" value="{{ artista.id }}">
+                <label class="block">
+                  <span class="{{ ui.rotulo }}">Motivo</span>
+                  <select name="motivo" required class="{{ ui.campo_claro }}">
+                    {% for codigo, nome in motivos %}<option value="{{ codigo }}">{{ nome }}</option>{% endfor %}
+                  </select>
+                </label>
+                <label class="block">
+                  <span class="{{ ui.rotulo }}">Detalhes (opcional)</span>
+                  <textarea name="detalhes" maxlength="500" rows="3" class="{{ ui.campo_claro }}"></textarea>
+                </label>
+                <button type="submit" class="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-cream transition-colors hover:bg-stage">Enviar denúncia</button>
+              </form>
+            </details>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ---------- Como contratar ---------- #}
+  <section class="border-b border-line bg-cream">
+    <div class="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
+      <p class="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-ink-soft">(a) Contratação</p>
+      <h2 class="font-display text-4xl uppercase tracking-tight">Como funciona com {{ artista.nome_artistico }}</h2>
+      <ul class="mt-8 divide-y divide-line rounded-2xl border border-line bg-paper ring-1 ring-black/5">
+        {% for item, valor in condicoes %}
+          <li class="flex items-baseline justify-between gap-4 px-5 py-4 sm:px-7">
+            <span class="text-sm font-medium sm:text-base">{{ item }}</span>
+            <span class="hidden flex-1 border-b border-dashed border-line sm:block" aria-hidden="true"></span>
+            <span class="shrink-0 font-display text-xl tracking-tight">{{ valor }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="mt-3 text-xs text-ink-soft">Valores estimados — o orçamento final depende de data, duração e deslocamento.</p>
+    </div>
+  </section>
+
+  {# ---------- Portfólio ---------- #}
+  {% if portfolio %}
+    <section class="border-b border-line">
+      <div class="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
+        <p class="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-ink-soft">(b) Portfólio</p>
+        <h2 class="font-display text-4xl uppercase tracking-tight">Trabalhos de {{ artista.nome_artistico }}</h2>
+        <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {% for item in portfolio %}
+            <figure class="overflow-hidden rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+              {% if item.embed %}
+                <iframe src="{{ item.embed }}" title="{{ item.titulo }}" loading="lazy" class="aspect-video w-full" allow="encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+              {% elif item.tipo == 'foto' %}
+                <img src="{{ item.url }}" alt="{{ item.titulo }}" loading="lazy" class="aspect-[4/3] w-full object-cover">
+              {% else %}
+                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="flex aspect-[4/3] w-full items-center justify-center bg-ink font-display text-2xl uppercase text-cream transition-colors hover:bg-stage">▶ Ouvir</a>
+              {% endif %}
+              <figcaption class="flex items-center justify-between gap-3 px-4 py-3">
+                <span class="truncate text-sm font-semibold">{{ item.titulo }}</span>
+                {% selo item.tipo %}
+              </figcaption>
+            </figure>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
+  {# ---------- Avaliações ---------- #}
+  <section class="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
+    <p class="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-ink-soft">({{ portfolio|yesno:'c,b' }}) Avaliações</p>
+    <h2 class="font-display text-4xl uppercase tracking-tight">O que dizem os clientes</h2>
+    {% if avaliacoes %}
+      <div class="mt-8 grid gap-4 md:grid-cols-3">
+        {% for av in avaliacoes %}
+          <figure class="flex flex-col rounded-2xl border border-line bg-cream p-6 ring-1 ring-black/5">
+            {% estrelas av.nota %}
+            <blockquote class="mt-3 flex-1 text-pretty text-sm text-ink-soft">“{{ av.comentario|default:"Sem comentário." }}”</blockquote>
+            <figcaption class="mt-4 border-t border-line pt-3">
+              <p class="text-sm font-semibold">{{ av.cliente.perfil.nome }}</p>
+              <p class="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-soft">{{ av.criado_em|data_br }}</p>
+              {% if usuario_nome and usuario_papel != 'admin' %}
+                <details class="mt-2">
+                  <summary class="cursor-pointer list-none text-[11px] text-ink-soft hover:text-stage">Denunciar avaliação</summary>
+                  <form action="{% url 'denunciar' %}" method="post" class="mt-2 space-y-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="alvo" value="avaliacao">
+                    <input type="hidden" name="alvo_id" value="{{ av.id }}">
+                    <select name="motivo" required aria-label="Motivo" class="w-full rounded-lg border border-line bg-paper px-3 py-2 text-xs">
+                      {% for codigo, nome in motivos %}<option value="{{ codigo }}">{{ nome }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" class="rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-cream hover:bg-stage">Enviar</button>
+                  </form>
+                </details>
+              {% endif %}
+            </figcaption>
+          </figure>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="mt-8">{% vazio "Ainda não há avaliações para este artista." %}</div>
+    {% endif %}
+  </section>
+
+  {# ---------- Barra fixa de contratação ---------- #}
+  <div class="sticky bottom-0 z-20 border-t border-line bg-paper/95 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3 md:px-8">
+      <div class="flex items-center gap-3">
+        {% foto artista "size-10 rounded-full ring-1 ring-black/10" %}
+        <div>
+          <p class="text-sm font-semibold leading-tight">{{ artista.nome_artistico }}</p>
+          <p class="text-xs text-ink-soft">a partir de {{ artista.preco_minimo|moeda }}</p>
+        </div>
+      </div>
+      <a href="{% url 'orcamento' %}?categoria={{ artista.categoria_id }}"
+         class="rounded-full bg-stage px-6 py-2.5 text-sm font-semibold text-cream ring-1 ring-black/5 transition-colors hover:bg-ink">Solicitar orçamento</a>
+    </div>
+  </div>
+{% endblock %}

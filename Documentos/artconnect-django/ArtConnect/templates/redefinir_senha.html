@@ -1,0 +1,26 @@
+{% extends "base_auth.html" %}
+{% block titulo %}Nova senha{% endblock %}
+{% block chamada %}Crie uma senha nova{% endblock %}
+{% block apoio %}Use pelo menos 8 caracteres. O link de recuperação vale uma única vez.{% endblock %}
+
+{% block formulario %}
+  <form action="{% url 'redefinir_senha' token %}" method="post">
+    {% csrf_token %}
+    <h2 class="text-3xl font-bold tracking-tight text-ink">Nova senha</h2>
+    <p class="mt-2 text-sm text-ink-soft">Depois de salvar, é só entrar com a senha nova.</p>
+
+    <div class="mt-8 space-y-5">
+      <div>
+        <label for="senha" class="block text-sm font-medium text-ink">Nova senha</label>
+        <input id="senha" name="senha" type="password" minlength="8" autocomplete="new-password" required
+               class="mt-2 w-full rounded-lg border border-line bg-white px-4 py-3 text-[0.95rem] text-ink outline-none transition focus-visible:border-stage focus-visible:ring-2 focus-visible:ring-stage/25">
+      </div>
+      <div>
+        <label for="confirmar" class="block text-sm font-medium text-ink">Repita a senha</label>
+        <input id="confirmar" name="confirmar" type="password" minlength="8" autocomplete="new-password" required
+               class="mt-2 w-full rounded-lg border border-line bg-white px-4 py-3 text-[0.95rem] text-ink outline-none transition focus-visible:border-stage focus-visible:ring-2 focus-visible:ring-stage/25">
+      </div>
+      <button type="submit" class="w-full rounded-full bg-stage px-6 py-3 text-[0.95rem] font-semibold text-cream transition-colors hover:bg-stage-deep">Salvar nova senha</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,3 +1,5 @@
+> **Versão antiga (Flask).** O site atual foi refeito em Django, no formato pedido na disciplina, e está em [`Documentos/artconnect-django/`](../artconnect-django/). Esta pasta fica guardada porque os links de evidência das Sprints 6 e 7 apontam para cá.
+
 # ArtConnect
 
 Plataforma que conecta quem organiza eventos a artistas locais e independentes (DJs, mágicos, cantores, chefs, fotógrafos e mais).

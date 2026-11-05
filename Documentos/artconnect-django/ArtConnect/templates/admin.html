@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Dashboard{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-6xl px-5 py-12 md:px-8 md:py-16">
+    <p class="{{ ui.rotulo }}">Administração</p>
+    <h1 class="mt-3 font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Dashboard da plataforma</h1>
+    <p class="mt-3 max-w-[60ch] text-pretty text-ink-soft">Uso e engajamento do ArtConnect, calculados direto do banco de dados.</p>
+
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {% kpi "Clientes" totais.clientes totais.novos_30_dias|texto|add:" contas novas em 30 dias" %}
+      {% kpi "Artistas ativos" totais.artistas_ativos totais.contas_artista|texto|add:" com login próprio" %}
+      {% kpi "Pedidos" totais.pedidos totais.propostas|texto|add:" propostas recebidas" %}
+      {% kpi "Conversão" conversao|texto|add:"%" "pedidos que viraram contrato" %}
+      {% kpi "Volume contratado" totais.volume|moeda totais.contratos|texto|add:" contratos" %}
+      {% kpi "Valor retido" totais.retido|moeda "aguardando confirmação" %}
+      {% kpi "Nota média" totais.nota_media|default:"—" totais.avaliacoes|texto|add:" avaliações" %}
+      <a href="{% url 'admin_denuncias' %}" class="block rounded-2xl p-5 ring-1 ring-black/5 transition-colors {% if totais.denuncias_abertas %}bg-stage text-cream hover:bg-ink{% else %}border border-line bg-cream hover:bg-paper{% endif %}">
+        <p class="font-mono text-[11px] uppercase tracking-[0.15em] {% if totais.denuncias_abertas %}text-cream/80{% else %}text-ink-soft{% endif %}">Denúncias abertas</p>
+        <p class="mt-2 font-display text-3xl tracking-tight">{{ totais.denuncias_abertas }}</p>
+        <p class="mt-1 text-xs {% if totais.denuncias_abertas %}text-cream/80{% else %}text-ink-soft{% endif %}">abrir fila de moderação →</p>
+      </a>
+    </div>
+
+    <section class="mt-14">
+      <h2 class="font-display text-2xl uppercase tracking-tight">Demanda por categoria</h2>
+      <div class="mt-4 rounded-2xl border border-line bg-cream p-6 ring-1 ring-black/5">
+        <div class="mb-5 flex gap-5 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+          <span class="flex items-center gap-2"><i class="size-2.5 rounded-full bg-stage"></i>Pedidos</span>
+          <span class="flex items-center gap-2"><i class="size-2.5 rounded-full bg-ink"></i>Contratos</span>
+        </div>
+        <div class="space-y-4">
+          {% for c in categorias %}
+            <div class="grid items-center gap-3 sm:grid-cols-[10rem_1fr_4rem]">
+              <span class="text-sm font-medium">{{ c.nome }}</span>
+              <div class="space-y-1" role="img" aria-label="{{ c.nome }}: {{ c.pedidos }} pedidos e {{ c.contratos }} contratos">
+                <div class="h-2 overflow-hidden rounded-full bg-line"><div class="a-fill h-full rounded-full bg-stage" style="width: {{ c.largura_pedidos }}%"></div></div>
+                <div class="h-2 overflow-hidden rounded-full bg-line"><div class="a-fill h-full rounded-full bg-ink" style="width: {{ c.largura_contratos }}%"></div></div>
+              </div>
+              <span class="text-right font-mono text-xs text-ink-soft">{{ c.pedidos }} · {{ c.contratos }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <div class="mt-14 grid gap-8 md:grid-cols-2">
+      {% for titulo_lista, linhas, contrato in listas_status %}
+        <section>
+          <h2 class="font-display text-2xl uppercase tracking-tight">{{ titulo_lista }}</h2>
+          {% if linhas %}
+            <ul class="mt-4 divide-y divide-line rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+              {% for s in linhas %}
+                <li class="flex items-center justify-between px-5 py-3">
+                  <span class="text-sm font-medium">{% if contrato %}{{ s.status|status_contrato }}{% else %}{{ s.status|sem_underline|capfirst }}{% endif %}</span>
+                  <span class="font-display text-xl tracking-tight">{{ s.total }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="mt-4">{% vazio "Nada registrado ainda." %}</div>
+          {% endif %}
+        </section>
+      {% endfor %}
+    </div>
+
+    <section class="mt-14">
+      <h2 class="font-display text-2xl uppercase tracking-tight">Artistas mais bem avaliados</h2>
+      <div class="mt-4 overflow-x-auto rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+        <table class="w-full min-w-[520px] text-left text-sm">
+          <thead class="border-b border-line">
+            <tr class="{{ ui.rotulo }}"><th class="px-5 py-3 font-medium">Artista</th><th class="px-5 py-3 font-medium">Categoria</th><th class="px-5 py-3 font-medium">Nota</th><th class="px-5 py-3 font-medium">Avaliações</th></tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            {% for r in ranking %}
+              <tr><td class="px-5 py-3 font-semibold">{{ r.nome_artistico }}</td><td class="px-5 py-3 text-ink-soft">{{ r.categoria }}</td><td class="px-5 py-3"><span class="text-stage">★</span> {{ r.nota_media }}</td><td class="px-5 py-3">{{ r.total_avaliacoes }}</td></tr>
+            {% empty %}
+              <tr><td colspan="4" class="px-5 py-6 text-center text-ink-soft">Nenhuma avaliação ainda.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+{% endblock %}
