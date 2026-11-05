@@ -52,6 +52,28 @@ STATUS_PAGAMENTO = [
     ("reembolsado", "Reembolsado"),
 ]
 
+CATEGORIAS_SUPORTE = [
+    ("pagamento", "Pagamento ou reembolso"),
+    ("contrato", "Problema com um contrato"),
+    ("conta", "Conta e acesso"),
+    ("tecnico", "Erro no site"),
+    ("duvida", "Dúvida geral"),
+]
+
+# horas para a primeira resposta da equipe (documento "Categorias e prazos de atendimento do suporte")
+PRAZOS_SUPORTE = {
+    "pagamento": 24,
+    "contrato": 24,
+    "conta": 48,
+    "tecnico": 48,
+    "duvida": 72,
+}
+
+TIPOS_CUPOM = [
+    ("percentual", "Percentual (%)"),
+    ("fixo", "Valor fixo (R$)"),
+]
+
 STATUS_SUPORTE = [
     ("aberto", "Aberto"),
     ("em_andamento", "Em andamento"),
@@ -71,6 +93,8 @@ TIPOS_NOTIFICACAO = [
     ("mensagem", "Mensagem"),
     ("avaliacao", "Avaliação"),
     ("moderacao", "Moderação"),
+    ("lembrete", "Lembrete"),
+    ("suporte", "Suporte"),
 ]
 
 MOTIVOS_DENUNCIA = [
@@ -238,6 +262,8 @@ class Pagamento(models.Model):
     contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name="pagamentos")
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     metodo = models.CharField(max_length=20, blank=True)
+    cupom = models.ForeignKey("Cupom", on_delete=models.PROTECT, null=True, blank=True, related_name="pagamentos")
+    desconto = models.DecimalField(max_digits=10, decimal_places=2, default=0)   # pago pela plataforma
     status = models.CharField(max_length=20, choices=STATUS_PAGAMENTO, default="pendente")
     pago_em = models.DateTimeField(null=True, blank=True)
     liberado_em = models.DateTimeField(null=True, blank=True)
@@ -256,6 +282,8 @@ class Avaliacao(models.Model):
     nota = models.PositiveSmallIntegerField()
     comentario = models.TextField(blank=True, null=True)
     oculta = models.BooleanField(default=False)   # escondida pela moderação
+    resposta = models.TextField(max_length=500, blank=True)   # resposta pública do artista
+    respondida_em = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -281,15 +309,35 @@ class Mensagem(models.Model):
 
 class ChamadoSuporte(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chamados")
+    categoria = models.CharField(max_length=20, choices=CATEGORIAS_SUPORTE, default="duvida")
+    contrato = models.ForeignKey("Contrato", on_delete=models.SET_NULL, null=True, blank=True, related_name="chamados")
     assunto = models.CharField(max_length=120)
     descricao = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_SUPORTE, default="aberto")
+    prazo_resposta = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "chamado de suporte"
         verbose_name_plural = "chamados de suporte"
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return self.assunto
+
+
+class MensagemChamado(models.Model):
+    """Conversa dentro de um chamado de suporte (usuário e equipe)."""
+    chamado = models.ForeignKey(ChamadoSuporte, on_delete=models.CASCADE, related_name="mensagens")
+    autor = models.ForeignKey(User, on_delete=models.CASCADE)
+    da_equipe = models.BooleanField(default=False)
+    texto = models.TextField(max_length=1000)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["criado_em"]
 
 
 class Disponibilidade(models.Model):
@@ -397,3 +445,40 @@ class Portfolio(models.Model):
     class Meta:
         verbose_name_plural = "portfólio"
         ordering = ["criado_em"]
+
+
+# ---------------------------------------------------------------
+# Sprint 8
+# ---------------------------------------------------------------
+class Cupom(models.Model):
+    codigo = models.CharField(max_length=20, unique=True)   # sempre em maiúsculas
+    descricao = models.CharField(max_length=120, blank=True)
+    tipo = models.CharField(max_length=10, choices=TIPOS_CUPOM)
+    valor = models.DecimalField(max_digits=10, decimal_places=2)        # 10 = 10% ou R$ 10
+    valor_minimo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    desconto_maximo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    validade = models.DateField(null=True, blank=True)
+    limite_usos = models.PositiveIntegerField(null=True, blank=True)    # vazio = sem limite
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "cupons"
+        constraints = [
+            models.CheckConstraint(condition=Q(valor__gt=0), name="cupom_valor_positivo"),
+            models.CheckConstraint(condition=~Q(tipo="percentual") | Q(valor__lte=100), name="cupom_percentual_ate_100"),
+        ]
+
+    def __str__(self):
+        return self.codigo
+
+
+class LembreteEnviado(models.Model):
+    """Evita mandar o mesmo lembrete duas vezes para a mesma pessoa."""
+    contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name="lembretes")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    antecedencia = models.CharField(max_length=10, choices=[("7dias", "7 dias antes"), ("1dia", "1 dia antes")])
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["contrato", "user", "antecedencia"], name="lembrete_unico")]

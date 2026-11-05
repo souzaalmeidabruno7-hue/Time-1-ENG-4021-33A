@@ -24,6 +24,15 @@
             <span class="font-medium text-cream/70">Novo na plataforma</span>
           {% endif %}
         </div>
+        {% if selos %}
+          <ul class="mt-4 flex flex-wrap gap-2" aria-label="Selos de reputação">
+            {% for codigo, nome, explicacao in selos %}
+              <li title="{{ explicacao }}" class="inline-flex items-center gap-1.5 rounded-full bg-cream/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cream ring-1 ring-cream/20">
+                <span class="text-stage" aria-hidden="true">✦</span>{{ nome }}<span class="sr-only">: {{ explicacao }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
         <p class="mt-5 max-w-[56ch] text-pretty text-cream/80">{{ artista.descricao|default:"Este artista ainda não escreveu uma descrição." }}</p>
         <p class="mt-6 text-sm text-cream/60">
           Cachê a partir de <span class="font-semibold text-cream">{{ artista.preco_minimo|moeda }}</span>
@@ -127,6 +136,12 @@
             <figcaption class="mt-4 border-t border-line pt-3">
               <p class="text-sm font-semibold">{{ av.cliente.perfil.nome }}</p>
               <p class="font-mono text-[11px] uppercase tracking-[0.12em] text-ink-soft">{{ av.criado_em|data_br }}</p>
+              {% if av.resposta %}
+                <div class="mt-3 rounded-xl bg-paper px-4 py-3 text-sm">
+                  <p class="font-mono text-[10px] uppercase tracking-[0.12em] text-stage">Resposta de {{ artista.nome_artistico }}</p>
+                  <p class="mt-1 text-ink-soft">{{ av.resposta }}</p>
+                </div>
+              {% endif %}
               {% if usuario_nome and usuario_papel != 'admin' %}
                 <details class="mt-2">
                   <summary class="cursor-pointer list-none text-[11px] text-ink-soft hover:text-stage">Denunciar avaliação</summary>

@@ -117,6 +117,7 @@
               <div class="min-w-0">
                 <h3 class="font-display text-xl uppercase leading-none tracking-tight">{{ artista.nome_artistico }}</h3>
                 <p class="mt-1 text-xs text-ink-soft">{{ artista.categoria }} · {% if artista.nota_media %}★ {{ artista.nota_media }}{% else %}Novo{% endif %}</p>
+                {% if artista.selos %}<ul class="mt-3 flex flex-wrap gap-1.5" aria-label="Selos">{% for codigo, nome, explicacao in artista.selos|slice:":2" %}<li title="{{ explicacao }}" class="rounded-full bg-stage/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-stage">✦ {{ nome }}</li>{% endfor %}</ul>{% endif %}
               </div>
             </a>
             <div class="md:col-span-3">
@@ -155,6 +156,7 @@
               <h3 class="mt-2 truncate font-display text-2xl uppercase leading-none tracking-tight">{{ artista.nome_artistico }}</h3>
               <p class="mt-1 text-sm text-ink-soft">{{ artista.cidade }}</p>
               <p class="mt-2 font-mono text-xs text-ink-soft">a partir de <b class="text-ink">{{ artista.preco_minimo|moeda }}</b></p>
+              {% if artista.selos %}<ul class="mt-3 flex flex-wrap gap-1.5" aria-label="Selos">{% for codigo, nome, explicacao in artista.selos|slice:":2" %}<li title="{{ explicacao }}" class="rounded-full bg-stage/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-stage">✦ {{ nome }}</li>{% endfor %}</ul>{% endif %}
             </div>
           </a>
         {% endfor %}

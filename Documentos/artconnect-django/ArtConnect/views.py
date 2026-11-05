@@ -1,3 +1,4 @@
+import csv
 import hashlib
 import secrets
 import uuid
@@ -12,16 +13,20 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import Avg, Count, F, Q, Sum
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 
+from ArtConnect.lembretes import gerar_lembretes
 from ArtConnect.match import calcular_compatibilidade
-from ArtConnect.models import (MOTIVOS_DENUNCIA, TIPOS_EVENTO, Artista, Avaliacao, Cancelamento, Categoria,
-                               Contrato, Denuncia, Disponibilidade, Evento, Favorito, Mensagem, Notificacao,
-                               Pagamento, PedidoOrcamento, Perfil, Portfolio, Proposta, TokenSenha)
-from ArtConnect.politicas import dividir_valor, link_embed, percentual_reembolso
+from ArtConnect.models import (CATEGORIAS_SUPORTE, MOTIVOS_DENUNCIA, PRAZOS_SUPORTE, TIPOS_EVENTO, Artista, Avaliacao,
+                               Cancelamento, Categoria, ChamadoSuporte, Contrato, Cupom, Denuncia, Disponibilidade,
+                               Evento, Favorito, Mensagem, MensagemChamado, Notificacao, Pagamento, PedidoOrcamento,
+                               Perfil, Portfolio, Proposta, TokenSenha)
+from ArtConnect.politicas import calcular_desconto, dividir_valor, link_embed, percentual_reembolso
+from ArtConnect.selos import selos_do_artista
 from ArtConnect.templatetags.artconnect import data_br, moeda
 
 MINUTOS_VALIDADE_TOKEN = 30
@@ -136,6 +141,8 @@ def variaveis_globais(request):
     notificacoes_novas = 0
     usuario_nome = None
     if request.user.is_authenticated:
+        # Sprint 8: avisos de eventos nos próximos 7 dias (só cria os que ainda não existem)
+        gerar_lembretes(request.user)
         notificacoes_novas = Notificacao.objects.filter(user=request.user, lida=False).count()
         usuario_nome = nome_de(request.user)
     return {
@@ -223,6 +230,7 @@ def index(request):
         if artista.cidade not in cidades:
             cidades.append(artista.cidade)
         # atraso da animação de cada linha dos resultados
+        artista.selos = selos_do_artista(artista)
         artista.atraso = posicao * 80
         artista.atraso_barra = posicao * 90 + 100
         posicao = posicao + 1
@@ -301,6 +309,7 @@ def artista_detalhe(request, artista_id):
     ]
     contexto = {
         "artista": artista,
+        "selos": selos_do_artista(artista),
         "avaliacoes": avaliacoes,
         "portfolio": portfolio,
         "favorito": favorito,
@@ -1049,7 +1058,12 @@ def admin_dashboard(request):
         "nota_media": round(nota, 1) if nota is not None else None,
         "avaliacoes": Avaliacao.objects.count(),
         "denuncias_abertas": Denuncia.objects.filter(status="aberta").count(),
+        "chamados_abertos": ChamadoSuporte.objects.exclude(status="resolvido").count(),
+        "chamados_atrasados": 0,
     }
+    for item in ChamadoSuporte.objects.exclude(status="resolvido"):
+        if chamado_atrasado(item):
+            totais["chamados_atrasados"] = totais["chamados_atrasados"] + 1
     pedidos_por_status = PedidoOrcamento.objects.values("status").annotate(total=Count("id")).order_by("-total")
     contratos_por_status = Contrato.objects.values("status").annotate(total=Count("id")).order_by("-total")
 
@@ -1087,6 +1101,7 @@ def admin_dashboard(request):
         "categorias": categorias,
         "ranking": ranking,
         "conversao": conversao,
+        "relatorios": RELATORIOS,
     }
     return render(request, "admin.html", contexto)
 
@@ -1107,9 +1122,33 @@ def pagar_contrato(request, contrato_id):
         messages.error(request, "A data desse evento já passou. Cancele o contrato ou fale com o artista.")
         return redirect(url_com_aba("painel", "historico"))
 
-    contexto = {"contrato": contrato, "metodos": METODOS_PAGAMENTO}
+    # Sprint 8: cupom de desconto (vem no endereço ao clicar em "Aplicar" e no formulário ao pagar)
+    if request.method == "POST":
+        codigo = request.POST.get("cupom", "")
+    else:
+        codigo = request.GET.get("cupom", "")
+    codigo = codigo.strip().upper()
+    cupom = None
+    desconto = 0
+    if codigo != "":
+        cupom, desconto, erro = validar_cupom(codigo, contrato, request.user)
+        if erro:
+            messages.error(request, erro)
+        elif request.method == "GET":
+            messages.success(request, "Cupom " + cupom.codigo + " aplicado: desconto de " + moeda(desconto) + ".")
+    contexto = {
+        "contrato": contrato,
+        "metodos": METODOS_PAGAMENTO,
+        "cupom": cupom,
+        "codigo_cupom": codigo,
+        "desconto": desconto,
+        "total_a_pagar": float(contrato.valor_total) - desconto,
+    }
+
     if request.method == "POST":
         metodo = request.POST.get("metodo", "")
+        if codigo != "" and cupom is None:
+            return render(request, "pagar.html", contexto, status=400)
         if metodo not in ("pix", "boleto"):
             messages.error(request, "Escolha a forma de pagamento.")
             return render(request, "pagar.html", contexto, status=400)
@@ -1117,7 +1156,9 @@ def pagar_contrato(request, contrato_id):
             messages.error(request, "Confirme que leu como funciona a retenção do valor.")
             return render(request, "pagar.html", contexto, status=400)
         with transaction.atomic():
-            contrato.pagamentos.filter(status="pendente").update(status="retido", metodo=metodo, pago_em=timezone.now())
+            contrato.pagamentos.filter(status="pendente").update(
+                status="retido", metodo=metodo, pago_em=timezone.now(), cupom=cupom, desconto=desconto,
+                valor=contexto["total_a_pagar"])
             contrato.status = "valor_retido"
             contrato.save()
         notificar(contrato.artista.user, "pagamento",
@@ -1538,3 +1579,275 @@ def remover_portfolio(request, item_id):
 
 def pagina_nao_encontrada(request, exception):
     return render(request, "404.html", status=404)
+
+
+# ---------------------------------------------------------------
+# Sprint 8 · Cupom de desconto no pagamento
+# ---------------------------------------------------------------
+def validar_cupom(codigo, contrato, usuario):
+    """Devolve (cupom, desconto em reais, mensagem de erro ou "")."""
+    cupom = Cupom.objects.filter(codigo=codigo).first()
+    if cupom is None or not cupom.ativo:
+        return None, 0, "Cupom " + codigo + " não existe ou não está mais ativo."
+    if cupom.validade is not None and cupom.validade < hoje():
+        return None, 0, "O cupom " + cupom.codigo + " venceu em " + data_br(cupom.validade) + "."
+    usos = Pagamento.objects.filter(cupom=cupom).exclude(pago_em=None).count()
+    if cupom.limite_usos is not None and usos >= cupom.limite_usos:
+        return None, 0, "O cupom " + cupom.codigo + " já atingiu o limite de usos."
+    if Pagamento.objects.filter(cupom=cupom, contrato__cliente=usuario).exclude(contrato=contrato).exists():
+        return None, 0, "Você já usou o cupom " + cupom.codigo + " em outra contratação."
+    if contrato.valor_total < cupom.valor_minimo:
+        return None, 0, "O cupom " + cupom.codigo + " vale para contratos a partir de " + moeda(cupom.valor_minimo) + "."
+    desconto = calcular_desconto(cupom.tipo, cupom.valor, contrato.valor_total, cupom.desconto_maximo)
+    return cupom, desconto, ""
+
+
+# ---------------------------------------------------------------
+# Sprint 8 · Central de suporte
+# ---------------------------------------------------------------
+def chamado_atrasado(chamado):
+    """Sem resposta da equipe depois do prazo da categoria."""
+    if chamado.status == "resolvido" or chamado.prazo_resposta is None:
+        return False
+    respondeu = chamado.mensagens.filter(da_equipe=True).exists()
+    return not respondeu and timezone.now() > chamado.prazo_resposta
+
+
+@login_required
+def suporte(request):
+    contratos = Contrato.objects.filter(Q(cliente=request.user) | Q(artista__user=request.user)).select_related("artista")
+    form = {}
+    if request.method == "POST":
+        form = request.POST
+        categoria = request.POST.get("categoria", "")
+        assunto = request.POST.get("assunto", "").strip()
+        descricao = request.POST.get("descricao", "").strip()
+        contrato_id = request.POST.get("contrato", "")
+        erros = []
+        codigos = []
+        for codigo, nome in CATEGORIAS_SUPORTE:
+            codigos.append(codigo)
+        if categoria not in codigos:
+            erros.append("Escolha a categoria do problema.")
+        if len(assunto) < 5 or len(assunto) > 120:
+            erros.append("O assunto precisa ter de 5 a 120 caracteres.")
+        if len(descricao) < 10 or len(descricao) > 1000:
+            erros.append("Descreva o problema (10 a 1000 caracteres).")
+        contrato = None
+        if contrato_id != "":
+            if id_valido(contrato_id):
+                contrato = contratos.filter(id=contrato_id).first()
+            if contrato is None:
+                erros.append("Contrato não encontrado.")
+        if len(erros) == 0:
+            chamado = ChamadoSuporte.objects.create(
+                user=request.user, categoria=categoria, contrato=contrato, assunto=assunto, descricao=descricao,
+                prazo_resposta=timezone.now() + timedelta(hours=PRAZOS_SUPORTE[categoria]),
+            )
+            messages.success(request, "Chamado aberto! A equipe responde em até "
+                             + str(PRAZOS_SUPORTE[categoria]) + " horas.")
+            return redirect("chamado", chamado_id=chamado.id)
+        for erro in erros:
+            messages.error(request, erro)
+
+    chamados = list(ChamadoSuporte.objects.filter(user=request.user).order_by("-criado_em"))
+    for chamado in chamados:
+        chamado.atrasado = chamado_atrasado(chamado)
+    contexto = {
+        "chamados": chamados,
+        "categorias": CATEGORIAS_SUPORTE,
+        "prazos": PRAZOS_SUPORTE,
+        "contratos": contratos.order_by("-data_evento"),
+        "form": form,
+    }
+    return render(request, "suporte.html", contexto, status=400 if request.method == "POST" else 200)
+
+
+@login_required
+def chamado(request, chamado_id):
+    sou_equipe = papel_de(request.user) == "admin"
+    item = None
+    if id_valido(chamado_id):
+        item = ChamadoSuporte.objects.select_related("user__perfil", "contrato__artista").filter(id=chamado_id).first()
+    if item is not None and not sou_equipe and item.user_id != request.user.id:
+        item = None
+    if item is None:
+        messages.error(request, "Chamado não encontrado.")
+        return redirect("suporte")
+
+    if request.method == "POST":
+        acao = request.POST.get("acao", "responder")
+        if acao == "resolver":
+            item.status = "resolvido"
+            item.save()
+            if sou_equipe and item.user_id != request.user.id:
+                notificar(item.user, "suporte", "Seu chamado \"" + item.assunto[:60] + "\" foi resolvido.",
+                          reverse("chamado", args=[item.id]))
+            messages.success(request, "Chamado marcado como resolvido.")
+            return redirect("chamado", chamado_id=item.id)
+        texto = request.POST.get("texto", "").strip()
+        if texto == "" or len(texto) > 1000:
+            messages.error(request, "Escreva uma mensagem de até 1000 caracteres.")
+        else:
+            MensagemChamado.objects.create(chamado=item, autor=request.user, da_equipe=sou_equipe, texto=texto)
+            if sou_equipe:
+                item.status = "em_andamento"
+                notificar(item.user, "suporte", "A equipe respondeu: " + texto[:120], reverse("chamado", args=[item.id]))
+            elif item.status == "resolvido":
+                item.status = "aberto"   # o usuário voltou a escrever: o chamado reabre
+            item.save()
+        return redirect(reverse("chamado", args=[item.id]) + "#fim")
+
+    mensagens = list(item.mensagens.select_related("autor__perfil"))
+    for mensagem in mensagens:
+        mensagem.minha = mensagem.autor_id == request.user.id
+    item.atrasado = chamado_atrasado(item)
+    return render(request, "chamado.html", {"chamado": item, "mensagens": mensagens, "sou_equipe": sou_equipe})
+
+
+@login_required
+@admin_obrigatorio
+def admin_suporte(request):
+    filtro = request.GET.get("status", "aberto")
+    if filtro not in ("aberto", "em_andamento", "resolvido"):
+        filtro = "aberto"
+    chamados = list(ChamadoSuporte.objects.filter(status=filtro).select_related("user__perfil")
+                    .order_by("prazo_resposta"))
+    for item in chamados:
+        item.atrasado = chamado_atrasado(item)
+    totais = {"aberto": 0, "em_andamento": 0, "resolvido": 0}
+    for linha in ChamadoSuporte.objects.values("status").annotate(total=Count("id")):
+        totais[linha["status"]] = linha["total"]
+    return render(request, "admin_suporte.html", {"chamados": chamados, "filtro": filtro, "totais": totais})
+
+
+# ---------------------------------------------------------------
+# Sprint 8 · Resposta do artista às avaliações
+# ---------------------------------------------------------------
+@login_required
+@artista_obrigatorio
+def responder_avaliacao(request, avaliacao_id):
+    artista = artista_logado(request)
+    avaliacao = None
+    if request.method == "POST" and id_valido(avaliacao_id):
+        avaliacao = Avaliacao.objects.filter(id=avaliacao_id, artista_id=artista.id, oculta=False).first()
+    if avaliacao is None:
+        messages.error(request, "Avaliação não encontrada.")
+        return redirect(url_com_aba("artista_painel", "avaliacoes"))
+    resposta = request.POST.get("resposta", "").strip()
+    if len(resposta) < 5 or len(resposta) > 500:
+        messages.error(request, "A resposta precisa ter de 5 a 500 caracteres.")
+        return redirect(url_com_aba("artista_painel", "avaliacoes"))
+    primeira_vez = avaliacao.resposta == ""
+    avaliacao.resposta = resposta
+    avaliacao.respondida_em = timezone.now()
+    avaliacao.save()
+    if primeira_vez:
+        notificar(avaliacao.cliente, "avaliacao", artista.nome_artistico + " respondeu à sua avaliação.",
+                  reverse("artista_detalhe", args=[artista.id]))
+    messages.success(request, "Resposta publicada. Ela aparece embaixo da avaliação no seu perfil.")
+    return redirect(url_com_aba("artista_painel", "avaliacoes"))
+
+
+# ---------------------------------------------------------------
+# Sprint 8 · Relatórios em CSV para o administrador
+# ---------------------------------------------------------------
+RELATORIOS = [
+    ("contratos", "Contratos"),
+    ("pagamentos", "Pagamentos"),
+    ("pedidos", "Pedidos de orçamento"),
+    ("usuarios", "Usuários"),
+    ("chamados", "Chamados de suporte"),
+]
+
+
+def linhas_do_relatorio(tipo):
+    """Cabeçalho e linhas de cada relatório."""
+    linhas = []
+    if tipo == "contratos":
+        cabecalho = ["codigo", "cliente", "artista", "categoria", "data_evento", "local", "valor_total", "status", "criado_em"]
+        for c in Contrato.objects.select_related("cliente__perfil", "artista__categoria").order_by("-data_evento"):
+            linhas.append([str(c.id)[:8], nome_de(c.cliente), c.artista.nome_artistico, c.artista.categoria.nome,
+                           data_br(c.data_evento), c.local, str(c.valor_total), c.get_status_display(),
+                           data_br(c.criado_em)])
+    elif tipo == "pagamentos":
+        cabecalho = ["contrato", "artista", "valor_pago", "desconto", "cupom", "metodo", "status", "pago_em", "liberado_em"]
+        for pg in Pagamento.objects.select_related("contrato__artista", "cupom").order_by("criado_em"):
+            linhas.append([str(pg.contrato_id)[:8], pg.contrato.artista.nome_artistico, str(pg.valor), str(pg.desconto),
+                           pg.cupom.codigo if pg.cupom else "", pg.metodo, pg.get_status_display(),
+                           data_br(pg.pago_em) if pg.pago_em else "", data_br(pg.liberado_em) if pg.liberado_em else ""])
+    elif tipo == "pedidos":
+        cabecalho = ["cliente", "categoria", "data_evento", "convidados", "local", "status", "propostas", "criado_em"]
+        for p in PedidoOrcamento.objects.select_related("evento__cliente__perfil", "categoria").order_by("-criado_em"):
+            linhas.append([nome_de(p.evento.cliente), p.categoria.nome, data_br(p.data_evento), str(p.estimativa_convidados),
+                           p.local, p.get_status_display(), str(p.propostas.exclude(status="declinada").count()),
+                           data_br(p.criado_em)])
+    elif tipo == "usuarios":
+        cabecalho = ["usuario", "nome", "email", "cidade", "tipo", "desde"]
+        for u in User.objects.select_related("perfil").filter(perfil__isnull=False).order_by("perfil__criado_em"):
+            linhas.append([u.username, u.perfil.nome, u.email, u.perfil.cidade, u.perfil.get_papel_display(),
+                           data_br(u.perfil.criado_em)])
+    else:
+        cabecalho = ["assunto", "categoria", "usuario", "status", "aberto_em", "prazo", "respostas_da_equipe"]
+        for ch in ChamadoSuporte.objects.select_related("user").order_by("-criado_em"):
+            linhas.append([ch.assunto, ch.get_categoria_display(), ch.user.username, ch.get_status_display(),
+                           data_br(ch.criado_em), data_br(ch.prazo_resposta) if ch.prazo_resposta else "",
+                           str(ch.mensagens.filter(da_equipe=True).count())])
+    return cabecalho, linhas
+
+
+@login_required
+@admin_obrigatorio
+def exportar_relatorio(request, tipo):
+    tipos = []
+    for codigo, nome in RELATORIOS:
+        tipos.append(codigo)
+    if tipo not in tipos:
+        messages.error(request, "Relatório não encontrado.")
+        return redirect("admin_dashboard")
+    cabecalho, linhas = linhas_do_relatorio(tipo)
+    resposta = HttpResponse(content_type="text/csv; charset=utf-8")
+    resposta["Content-Disposition"] = 'attachment; filename="artconnect-' + tipo + "-" + hoje().isoformat() + '.csv"'
+    resposta.write("﻿")   # faz o Excel abrir os acentos certinho
+    escritor = csv.writer(resposta, delimiter=";")
+    escritor.writerow(cabecalho)
+    for linha in linhas:
+        escritor.writerow(linha)
+    return resposta
+
+
+# ---------------------------------------------------------------
+# Sprint 8 · Comprovante de contratação para impressão
+# ---------------------------------------------------------------
+@login_required
+def comprovante(request, contrato_id):
+    contrato = None
+    if id_valido(contrato_id):
+        contrato = (Contrato.objects.select_related("cliente__perfil", "artista__categoria", "evento", "proposta__pedido")
+                    .filter(id=contrato_id).first())
+    if contrato is not None:
+        pode_ver = (contrato.cliente_id == request.user.id or contrato.artista.user_id == request.user.id
+                    or papel_de(request.user) == "admin")
+        if not pode_ver:
+            contrato = None
+    if contrato is None:
+        messages.error(request, "Contrato não encontrado.")
+        return redirect(destino_painel(request))
+
+    pagamentos = list(contrato.pagamentos.select_related("cupom").order_by("criado_em"))
+    desconto = 0
+    for pagamento in pagamentos:
+        desconto = desconto + float(pagamento.desconto)
+    cancelamento = Cancelamento.objects.filter(contrato=contrato).first()
+    # código curto para conferir o comprovante (não dá para adivinhar sem saber o contrato)
+    verificacao = hashlib.sha256((str(contrato.id) + settings.SECRET_KEY).encode("utf-8")).hexdigest()[:10].upper()
+    contexto = {
+        "contrato": contrato,
+        "pagamentos": pagamentos,
+        "desconto": desconto,
+        "cancelamento": cancelamento,
+        "verificacao": verificacao,
+        "emitido_em": timezone.localtime(),
+        "horario": contrato.proposta.pedido.horario_inicio if contrato.proposta else None,
+    }
+    return render(request, "comprovante.html", contexto)

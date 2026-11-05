@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from ArtConnect.dados_exemplo import SENHA_PADRAO, popular
 from ArtConnect.match import calcular_compatibilidade
-from ArtConnect.models import (Artista, Avaliacao, Cancelamento, Categoria, Contrato, Denuncia, Disponibilidade,
+from ArtConnect.models import (Artista, Avaliacao, Cancelamento, Categoria, ChamadoSuporte, Contrato, Denuncia, Disponibilidade,
                                Favorito, Mensagem, Notificacao, Pagamento, PedidoOrcamento, Perfil, Portfolio,
                                Proposta, TokenSenha)
 from ArtConnect.politicas import dividir_valor, link_embed, percentual_reembolso
@@ -764,3 +764,239 @@ class TestSenhaVersaoAnterior(TestCase):
         self.assertLessEqual(len(convertido), 128)
         self.assertTrue(check_password("minhasenha1", convertido))
         self.assertFalse(check_password("outrasenha", convertido))
+
+
+# ===============================================================
+# Sprint 8
+# ===============================================================
+class TestSelos(BaseArtConnect):
+
+    def codigos(self, nome):
+        from ArtConnect.selos import codigos_dos_selos
+        return codigos_dos_selos(Artista.objects.com_nota().get(nome_artistico=nome))
+
+    def test_selos_calculados_pelas_regras(self):
+        self.assertEqual(self.codigos("Selva Ritmo"), ["bem_avaliado", "responde_rapido", "confiavel", "perfil_completo"])
+        self.assertEqual(self.codigos("Clara Veloso"), ["novo_talento"])
+
+    def test_cancelar_tira_o_selo_confiavel(self):
+        contrato = self.contrato("luiz", "Selva Ritmo")
+        Cancelamento.objects.create(contrato=contrato, cancelado_por="artista", motivo="Imprevisto",
+                                    dias_antecedencia=3, percentual_reembolso=100)
+        self.assertNotIn("confiavel", self.codigos("Selva Ritmo"))
+
+    def test_selos_aparecem_no_perfil_e_na_home(self):
+        perfil = self.texto(self.client.get("/artistas/" + str(self.artista("Selva Ritmo").id)))
+        self.assertIn("Responde rápido", perfil)
+        self.assertIn("Perfil completo", perfil)
+        self.assertIn("✦ Novo talento", self.texto(self.client.get("/")))
+
+
+class TestCupom(BaseArtConnect):
+
+    def test_desconto_tem_teto_de_metade_do_contrato(self):
+        from ArtConnect.politicas import calcular_desconto
+        self.assertEqual(calcular_desconto("percentual", 10, 2800, 300), 280)
+        self.assertEqual(calcular_desconto("percentual", 20, 2800, 300), 300)
+        self.assertEqual(calcular_desconto("fixo", 900, 1000), 500)
+
+    def test_pagamento_com_cupom(self):
+        contrato = self.aceitar_selva()
+        url = "/contratos/" + str(contrato.id) + "/pagar"
+        pagina = self.texto(self.client.get(url + "?cupom=bemvindo10"))
+        self.assertIn("desconto de R$ 280", pagina)
+        self.assertIn("Confirmar pagamento de R$ 2.520", pagina)
+
+        self.client.post(url, {"metodo": "pix", "ciente": "on", "cupom": "BEMVINDO10"})
+        pagamento = contrato.pagamentos.get()
+        self.assertEqual(pagamento.status, "retido")
+        self.assertEqual(float(pagamento.valor), 2520)
+        self.assertEqual(float(pagamento.desconto), 280)
+        self.assertEqual(pagamento.cupom.codigo, "BEMVINDO10")
+
+    def test_cupom_vencido_ou_inexistente_nao_paga(self):
+        contrato = self.aceitar_selva()
+        url = "/contratos/" + str(contrato.id) + "/pagar"
+        self.assertIn("venceu", self.texto(self.client.get(url + "?cupom=NATAL2025")))
+        resposta = self.client.post(url, {"metodo": "pix", "ciente": "on", "cupom": "NAOEXISTE"})
+        self.assertEqual(resposta.status_code, 400)
+        self.assertEqual(contrato.pagamentos.get().status, "pendente")
+
+    def test_cupom_abaixo_do_minimo_e_uso_unico(self):
+        from ArtConnect.models import Cupom
+        Cupom.objects.create(codigo="GRANDE", tipo="fixo", valor=100, valor_minimo=5000)
+        contrato = self.aceitar_selva()
+        url = "/contratos/" + str(contrato.id) + "/pagar"
+        self.assertIn("a partir de R$ 5.000", self.texto(self.client.get(url + "?cupom=GRANDE")))
+        # luiz já usou o ARTE50 em outro contrato
+        outro = self.contrato("luiz", "Neon Sombra")
+        Pagamento.objects.filter(contrato=outro).update(cupom=Cupom.objects.get(codigo="ARTE50"))
+        self.assertIn("já usou", self.texto(self.client.get(url + "?cupom=ARTE50")))
+
+
+class TestSuporte(BaseArtConnect):
+
+    def abrir(self, **extra):
+        dados = {"categoria": "pagamento", "assunto": "Reembolso não chegou",
+                 "descricao": "Cancelei faz uma semana e o dinheiro não voltou."}
+        dados.update(extra)
+        return self.client.post("/suporte", dados)
+
+    def test_abrir_chamado_com_prazo_da_categoria(self):
+        self.entrar("helena")
+        resposta = self.abrir()
+        self.assertEqual(resposta.status_code, 302)
+        chamado = ChamadoSuporte.objects.get(user__username="helena")
+        horas = (chamado.prazo_resposta - chamado.criado_em).total_seconds() / 3600
+        self.assertAlmostEqual(horas, 24, places=1)
+        self.assertIn("Reembolso não chegou", self.texto(self.client.get("/suporte")))
+
+    def test_chamado_invalido(self):
+        self.entrar("helena")
+        resposta = self.abrir(assunto="oi", categoria="xyz")
+        self.assertEqual(resposta.status_code, 400)
+        self.assertFalse(ChamadoSuporte.objects.filter(user__username="helena").exists())
+
+    def test_equipe_responde_e_usuario_resolve_e_reabre(self):
+        self.entrar("helena")
+        self.abrir()
+        chamado = ChamadoSuporte.objects.get(user__username="helena")
+        url = "/suporte/" + str(chamado.id)
+        self.entrar("admin")
+        self.assertIn("Reembolso não chegou", self.texto(self.client.get("/admin/suporte")))
+        self.client.post(url, {"texto": "Já estamos verificando com o banco."})
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, "em_andamento")
+        self.assertEqual(self.notificacoes_de("helena")[0].tipo, "suporte")
+
+        self.entrar("helena")
+        self.client.post(url, {"acao": "resolver"})
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, "resolvido")
+        self.client.post(url, {"texto": "Voltou a dar erro."})
+        chamado.refresh_from_db()
+        self.assertEqual(chamado.status, "aberto")
+
+    def test_chamado_e_privado(self):
+        chamado = ChamadoSuporte.objects.get(user__username="luiz")
+        self.entrar("helena")
+        resposta = self.client.get("/suporte/" + str(chamado.id), follow=True)
+        self.assertIn("Chamado não encontrado", self.texto(resposta))
+
+    def test_chamado_atrasado(self):
+        from ArtConnect.views import chamado_atrasado
+        self.entrar("helena")
+        self.abrir()
+        chamado = ChamadoSuporte.objects.get(user__username="helena")
+        self.assertFalse(chamado_atrasado(chamado))
+        ChamadoSuporte.objects.filter(id=chamado.id).update(prazo_resposta=timezone.now() - timedelta(hours=1))
+        chamado.refresh_from_db()
+        self.assertTrue(chamado_atrasado(chamado))
+
+    def test_so_admin_ve_a_fila(self):
+        self.entrar("luiz")
+        self.assertEqual(self.client.get("/admin/suporte").status_code, 302)
+
+
+class TestRespostaAvaliacao(BaseArtConnect):
+
+    def test_artista_responde_e_aparece_no_perfil(self):
+        avaliacao = Avaliacao.objects.get(cliente__username="rafael")
+        self.entrar("coletivomare")
+        self.client.post("/artista/avaliacoes/" + str(avaliacao.id) + "/responder",
+                         {"resposta": "Obrigado, Rafael! Vamos chegar mais cedo na próxima."})
+        perfil = self.texto(self.client.get("/artistas/" + str(self.artista("Coletivo Maré").id)))
+        self.assertIn("Vamos chegar mais cedo", perfil)
+        self.assertIn("respondeu à sua avaliação", self.notificacoes_de("rafael")[0].texto)
+
+    def test_artista_nao_responde_avaliacao_de_outro(self):
+        avaliacao = Avaliacao.objects.get(cliente__username="rafael")
+        self.entrar("selvaritmo")
+        self.client.post("/artista/avaliacoes/" + str(avaliacao.id) + "/responder", {"resposta": "Tentando responder"})
+        avaliacao.refresh_from_db()
+        self.assertEqual(avaliacao.resposta, "")
+
+
+class TestRelatorios(BaseArtConnect):
+
+    def test_admin_baixa_csv(self):
+        self.entrar("admin")
+        resposta = self.client.get("/admin/relatorios/contratos.csv")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("text/csv", resposta["Content-Type"])
+        self.assertIn("attachment", resposta["Content-Disposition"])
+        conteudo = resposta.content.decode("utf-8-sig")
+        self.assertTrue(conteudo.startswith("codigo;cliente;artista"))
+        self.assertIn("Selva Ritmo", conteudo)
+        self.assertEqual(len(conteudo.strip().split("\n")), 9)   # cabeçalho + 8 contratos
+        for tipo in ["pagamentos", "pedidos", "usuarios", "chamados"]:
+            self.assertEqual(self.client.get("/admin/relatorios/" + tipo + ".csv").status_code, 200)
+
+    def test_csv_so_para_admin(self):
+        self.entrar("luiz")
+        self.assertEqual(self.client.get("/admin/relatorios/contratos.csv").status_code, 302)
+
+
+class TestComprovante(BaseArtConnect):
+
+    def test_cliente_e_artista_veem_comprovante(self):
+        contrato = self.contrato("luiz", "Selva Ritmo")
+        url = "/contratos/" + str(contrato.id) + "/comprovante"
+        self.entrar("luiz")
+        pagina = self.texto(self.client.get(url))
+        self.assertIn("Comprovante de contratação", pagina)
+        self.assertIn("R$ 4.620", pagina)
+        self.assertIn("Código de verificação", pagina)
+        self.entrar("selvaritmo")
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_outra_pessoa_nao_ve(self):
+        contrato = self.contrato("luiz", "Selva Ritmo")
+        self.entrar("helena")
+        resposta = self.client.get("/contratos/" + str(contrato.id) + "/comprovante", follow=True)
+        self.assertIn("Contrato não encontrado", self.texto(resposta))
+
+    def test_comprovante_mostra_desconto_do_cupom(self):
+        contrato = self.aceitar_selva()
+        self.client.post("/contratos/" + str(contrato.id) + "/pagar", {"metodo": "pix", "ciente": "on", "cupom": "ARTE50"})
+        pagina = self.texto(self.client.get("/contratos/" + str(contrato.id) + "/comprovante"))
+        self.assertIn("cupom ARTE50", pagina)
+        self.assertIn("− R$ 50", pagina)
+
+
+class TestLembretes(BaseArtConnect):
+
+    def test_lembrete_7_dias_e_vespera_sem_repetir(self):
+        from ArtConnect.lembretes import gerar_lembretes
+        contrato = self.contrato("luiz", "Neon Sombra")
+        Contrato.objects.filter(id=contrato.id).update(data_evento=date.today() + timedelta(days=5))
+        self.assertEqual(gerar_lembretes(), 2)            # cliente e artista
+        self.assertEqual(gerar_lembretes(), 0)            # não repete
+        self.assertIn("Faltam 5 dias", self.notificacoes_de("luiz")[0].texto)
+        self.assertEqual(self.notificacoes_de("neonsombra")[0].tipo, "lembrete")
+
+        Contrato.objects.filter(id=contrato.id).update(data_evento=date.today() + timedelta(days=1))
+        self.assertEqual(gerar_lembretes(), 2)
+        self.assertIn("Amanhã é o dia", self.notificacoes_de("luiz")[0].texto)
+
+    def test_lembrete_aparece_ao_abrir_o_site(self):
+        contrato = self.contrato("luiz", "Neon Sombra")
+        Contrato.objects.filter(id=contrato.id).update(data_evento=date.today() + timedelta(days=3))
+        self.entrar("luiz")
+        self.client.get("/")
+        self.assertEqual(self.notificacoes_de("luiz")[0].tipo, "lembrete")
+
+    def test_comando_enviar_lembretes(self):
+        from io import StringIO
+        from django.core.management import call_command
+        contrato = self.contrato("luiz", "Neon Sombra")
+        Contrato.objects.filter(id=contrato.id).update(data_evento=date.today() + timedelta(days=2))
+        saida = StringIO()
+        call_command("enviar_lembretes", stdout=saida)
+        self.assertIn("2 lembrete(s)", saida.getvalue())
+
+    def test_evento_passado_ou_cancelado_nao_gera_lembrete(self):
+        from ArtConnect.lembretes import gerar_lembretes
+        Contrato.objects.filter(artista__nome_artistico="Neon Sombra").update(
+            data_evento=date.today() + timedelta(days=2), status="cancelado")
+        self.assertEqual(gerar_lembretes(), 0)

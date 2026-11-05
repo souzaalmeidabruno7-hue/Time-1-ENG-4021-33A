@@ -8,8 +8,9 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.utils import timezone
 
-from ArtConnect.models import (Artista, Avaliacao, Categoria, Contrato, Disponibilidade, Evento, Favorito,
-                               Mensagem, Notificacao, Pagamento, PedidoOrcamento, Perfil, Portfolio, Proposta)
+from ArtConnect.models import (PRAZOS_SUPORTE, Artista, Avaliacao, Categoria, ChamadoSuporte, Contrato, Cupom,
+                               Disponibilidade, Evento, Favorito, Mensagem, MensagemChamado, Notificacao, Pagamento,
+                               PedidoOrcamento, Perfil, Portfolio, Proposta)
 
 SENHA_PADRAO = "artconnect123"
 
@@ -89,6 +90,13 @@ NOTIFICACOES = [
     ("luiz", "proposta", "Neon Sombra enviou uma contraproposta para 13/12/2026.", "/painel?aba=pedidos"),
     ("luiz", "pagamento", "O pagamento do contrato com Coletivo Maré está pendente.", "/painel?aba=historico"),
     ("selvaritmo", "mensagem", "Você tem uma conversa ativa com Luiz Gullo.", "/artista/painel?aba=propostas"),
+]
+
+# (codigo, descricao, tipo, valor, valor_minimo, desconto_maximo, validade)
+CUPONS = [
+    ("BEMVINDO10", "10% na primeira contratação", "percentual", 10, 500, 300, "2027-12-31"),
+    ("ARTE50", "R$ 50 de desconto acima de R$ 1.000", "fixo", 50, 1000, None, "2027-12-31"),
+    ("NATAL2025", "Campanha de Natal (encerrada)", "percentual", 15, 0, None, "2025-12-31"),
 ]
 
 # (artista, tipo, titulo, url)
@@ -194,5 +202,26 @@ def popular(mostrar=True):
         Notificacao.objects.filter(id=aviso.id).update(criada_em=timezone.now() - timedelta(minutes=posicao))
     for nome, tipo, titulo, url in PORTFOLIO:
         Portfolio.objects.create(artista=artista(nome), tipo=tipo, titulo=titulo, url=url)
+
+    avisar(mostrar, "Inserindo cupons, chamado de suporte e resposta de avaliação (Sprint 8)...")
+    for codigo, descricao, tipo, valor, minimo, maximo, validade in CUPONS:
+        Cupom.objects.create(codigo=codigo, descricao=descricao, tipo=tipo, valor=valor, valor_minimo=minimo,
+                             desconto_maximo=maximo, validade=date.fromisoformat(validade))
+
+    chamado = ChamadoSuporte.objects.create(
+        user=usuario("luiz"), categoria="pagamento",
+        contrato=Contrato.objects.get(artista__nome_artistico="Coletivo Maré", cliente__username="luiz"),
+        assunto="Não consegui pagar o contrato do Coletivo Maré",
+        descricao="A data do evento passou e o botão de pagar sumiu. O que eu faço?",
+        prazo_resposta=timezone.now() + timedelta(hours=PRAZOS_SUPORTE["pagamento"]), status="em_andamento",
+    )
+    MensagemChamado.objects.create(chamado=chamado, autor=usuario("admin"), da_equipe=True,
+                                   texto="Oi, Luiz! Como a data passou, o contrato precisa ser cancelado ou remarcado "
+                                         "com o artista. Já avisamos o Coletivo Maré.")
+
+    avaliacao = Avaliacao.objects.get(artista__nome_artistico="Selva Ritmo", cliente__username="helena")
+    avaliacao.resposta = "Obrigado, Helena! Foi um prazer tocar no casamento de vocês."
+    avaliacao.respondida_em = timezone.now()
+    avaliacao.save()
 
     avisar(mostrar, "Banco populado! Usuário de teste: luiz / senha: " + SENHA_PADRAO)

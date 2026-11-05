@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Suporte{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-6xl px-5 py-12 md:px-8 md:py-16">
+    <p class="{{ ui.rotulo }}">Central de ajuda</p>
+    <h1 class="mt-3 font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Suporte ArtConnect</h1>
+    <p class="mt-3 max-w-[60ch] text-pretty text-ink-soft">Problema com pagamento, contrato ou conta? Abra um chamado e acompanhe a resposta da equipe por aqui e pelos avisos.</p>
+
+    <div class="mt-10 grid gap-8 md:grid-cols-12">
+      <section class="md:col-span-5">
+        <h2 class="font-display text-2xl uppercase tracking-tight">Abrir chamado</h2>
+        <form method="post" class="mt-4 space-y-4 rounded-2xl border border-line bg-cream p-6 ring-1 ring-black/5">
+          {% csrf_token %}
+          <label class="block">
+            <span class="{{ ui.rotulo }}">Categoria</span>
+            <select name="categoria" required class="{{ ui.campo_claro }}">
+              {% for codigo, nome in categorias %}
+                <option value="{{ codigo }}" {% if form.categoria == codigo %}selected{% endif %}>{{ nome }} · resposta em até {{ prazos|item:codigo }}h</option>
+              {% endfor %}
+            </select>
+          </label>
+          {% if contratos %}
+            <label class="block">
+              <span class="{{ ui.rotulo }}">Contrato relacionado (opcional)</span>
+              <select name="contrato" class="{{ ui.campo_claro }}">
+                <option value="">Nenhum</option>
+                {% for c in contratos %}
+                  <option value="{{ c.id }}" {% if form.contrato == c.id|stringformat:'s' %}selected{% endif %}>{{ c.artista.nome_artistico }} · {{ c.data_evento|data_br }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          {% endif %}
+          <label class="block">
+            <span class="{{ ui.rotulo }}">Assunto</span>
+            <input name="assunto" value="{{ form.assunto }}" minlength="5" maxlength="120" required placeholder="Ex.: Reembolso não apareceu" class="{{ ui.campo_claro }}">
+          </label>
+          <label class="block">
+            <span class="{{ ui.rotulo }}">O que aconteceu?</span>
+            <textarea name="descricao" rows="5" minlength="10" maxlength="1000" required class="{{ ui.campo_claro }}">{{ form.descricao }}</textarea>
+          </label>
+          <button type="submit" class="rounded-full bg-stage px-6 py-3 text-sm font-semibold text-cream transition-colors hover:bg-ink">Enviar chamado</button>
+        </form>
+      </section>
+
+      <section class="md:col-span-7">
+        <h2 class="font-display text-2xl uppercase tracking-tight">Meus chamados</h2>
+        {% if chamados %}
+          <ul class="mt-4 divide-y divide-line rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+            {% for ch in chamados %}
+              <li>
+                <a href="{% url 'chamado' ch.id %}" class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-paper">
+                  <div class="min-w-0">
+                    <p class="truncate font-semibold">{{ ch.assunto }}</p>
+                    <p class="mt-1 text-xs text-ink-soft">{{ ch.get_categoria_display }} · aberto em {{ ch.criado_em|date:'d/m H:i' }}</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    {% if ch.atrasado %}{% selo "atrasado" "stage" %}{% endif %}
+                    {% selo ch.get_status_display ch.status|tom_suporte %}
+                  </div>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="mt-4">{% vazio "Você ainda não abriu nenhum chamado." %}</div>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+{% endblock %}

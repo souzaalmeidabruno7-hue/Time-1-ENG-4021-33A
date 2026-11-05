@@ -256,3 +256,12 @@ def icone_notificacao(tipo):
 def texto(valor):
     """Converte para texto, para juntar com |add:" ..." no template."""
     return str(valor)
+
+
+@register.filter
+def tom_suporte(status):
+    if status == "aberto":
+        return "aviso"
+    if status == "em_andamento":
+        return "ink"
+    return "ok"

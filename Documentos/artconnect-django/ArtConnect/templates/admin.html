@@ -23,6 +23,24 @@
       </a>
     </div>
 
+    <section class="mt-6 grid gap-4 md:grid-cols-[1fr_2fr]">
+      <a href="{% url 'admin_suporte' %}" class="flex items-center justify-between gap-4 rounded-2xl border border-line bg-cream p-5 ring-1 ring-black/5 transition-colors hover:bg-paper">
+        <div>
+          <p class="font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Chamados de suporte</p>
+          <p class="mt-2 font-display text-3xl tracking-tight">{{ totais.chamados_abertos }}</p>
+          <p class="mt-1 text-xs text-ink-soft">{% if totais.chamados_atrasados %}<b class="text-stage">{{ totais.chamados_atrasados }} atrasado{{ totais.chamados_atrasados|pluralize }}</b> · {% endif %}abrir fila de suporte →</p>
+        </div>
+      </a>
+      <div class="rounded-2xl border border-line bg-cream p-5 ring-1 ring-black/5">
+        <p class="font-mono text-[11px] uppercase tracking-[0.15em] text-ink-soft">Relatórios em CSV (abrem no Excel)</p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          {% for codigo, nome in relatorios %}
+            <a href="{% url 'exportar_relatorio' codigo %}" download class="rounded-full border border-line px-4 py-2 text-xs font-semibold transition-colors hover:bg-ink hover:text-cream">↓ {{ nome }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
     <section class="mt-14">
       <h2 class="font-display text-2xl uppercase tracking-tight">Demanda por categoria</h2>
       <div class="mt-4 rounded-2xl border border-line bg-cream p-6 ring-1 ring-black/5">

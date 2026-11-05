@@ -67,3 +67,25 @@ def link_embed(url):
     if servico == "youtube":
         return "https://www.youtube-nocookie.com/embed/" + codigo
     return "https://player.vimeo.com/video/" + codigo
+
+
+# ---------------------------------------------------------------
+# Cupons de desconto (Sprint 8)
+# Regras: Documentos/Sprint 8/tabela-cupons.md
+# ---------------------------------------------------------------
+DESCONTO_MAXIMO_DO_CONTRATO = 0.5   # o cupom nunca paga mais da metade do contrato
+
+
+def calcular_desconto(tipo, valor_cupom, valor_contrato, desconto_maximo=None):
+    """Desconto em reais que um cupom dá sobre o valor do contrato."""
+    valor_contrato = float(valor_contrato)
+    if tipo == "percentual":
+        desconto = valor_contrato * float(valor_cupom) / 100
+    else:
+        desconto = float(valor_cupom)
+    if desconto_maximo is not None and desconto > float(desconto_maximo):
+        desconto = float(desconto_maximo)
+    limite = valor_contrato * DESCONTO_MAXIMO_DO_CONTRATO
+    if desconto > limite:
+        desconto = limite
+    return round(desconto, 2)

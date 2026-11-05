@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Chamado{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-16">
+    <a href="{% if sou_equipe %}{% url 'admin_suporte' %}{% else %}{% url 'suporte' %}{% endif %}" class="text-sm text-ink-soft hover:text-stage">← Voltar</a>
+    <div class="mt-6 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="{{ ui.rotulo }}">{{ chamado.get_categoria_display }}{% if chamado.contrato %} · {{ chamado.contrato.artista.nome_artistico }} em {{ chamado.contrato.data_evento|data_br }}{% endif %}</p>
+        <h1 class="mt-2 font-display text-3xl uppercase leading-none tracking-tight">{{ chamado.assunto }}</h1>
+        <p class="mt-2 text-xs text-ink-soft">Aberto por {{ chamado.user.perfil.nome }} em {{ chamado.criado_em|date:'d/m/Y H:i' }} · prazo da primeira resposta: {{ chamado.prazo_resposta|date:'d/m H:i' }}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        {% if chamado.atrasado %}{% selo "atrasado" "stage" %}{% endif %}
+        {% selo chamado.get_status_display chamado.status|tom_suporte %}
+      </div>
+    </div>
+
+    <div class="mt-8 rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+      <div class="space-y-3 px-5 py-6">
+        <p class="max-w-[85%] whitespace-pre-line rounded-2xl bg-paper px-4 py-2 text-sm ring-1 ring-black/5">{{ chamado.descricao }}</p>
+        {% for m in mensagens %}
+          <p class="max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2 text-sm {% if m.da_equipe %}ml-auto bg-ink text-cream{% else %}bg-paper text-ink ring-1 ring-black/5{% endif %}">{% if m.da_equipe %}<b class="block text-xs text-stage">Equipe ArtConnect</b>{% endif %}{{ m.texto }}
+            <span class="mt-1 block font-mono text-[10px] opacity-60">{{ m.criado_em|date:'d/m H:i' }}</span>
+          </p>
+        {% endfor %}
+        <span id="fim"></span>
+      </div>
+      <form method="post" class="flex flex-wrap items-end gap-3 border-t border-line p-4">
+        {% csrf_token %}
+        <label class="min-w-[14rem] flex-1">
+          <span class="sr-only">Mensagem</span>
+          <textarea name="texto" rows="2" maxlength="1000" required placeholder="{% if sou_equipe %}Resposta da equipe{% else %}Escreva uma mensagem{% endif %}" class="w-full resize-none rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-stage"></textarea>
+        </label>
+        <button type="submit" class="rounded-full bg-stage px-6 py-3 text-sm font-semibold text-cream transition-colors hover:bg-ink">Enviar</button>
+      </form>
+    </div>
+    {% if chamado.status != 'resolvido' %}
+      <form method="post" class="mt-4 text-right">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="resolver">
+        <button type="submit" class="{{ ui.botao_contorno }}">Marcar como resolvido</button>
+      </form>
+    {% else %}
+      <p class="mt-4 text-right text-xs text-ink-soft">Chamado resolvido. Se escrever de novo, ele volta a ficar aberto.</p>
+    {% endif %}
+  </main>
+{% endblock %}

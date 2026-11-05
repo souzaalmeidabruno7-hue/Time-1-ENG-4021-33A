@@ -59,6 +59,14 @@ urlpatterns = [
     path("admin/denuncias", views.admin_denuncias, name="admin_denuncias"),
     path("admin/denuncias/<str:denuncia_id>/decidir", views.decidir_denuncia, name="decidir_denuncia"),
     path("admin/artistas/<str:artista_id>/reativar", views.reativar_artista, name="reativar_artista"),
+
+    # Sprint 8
+    path("suporte", views.suporte, name="suporte"),
+    path("suporte/<str:chamado_id>", views.chamado, name="chamado"),
+    path("admin/suporte", views.admin_suporte, name="admin_suporte"),
+    path("admin/relatorios/<str:tipo>.csv", views.exportar_relatorio, name="exportar_relatorio"),
+    path("artista/avaliacoes/<str:avaliacao_id>/responder", views.responder_avaliacao, name="responder_avaliacao"),
+    path("contratos/<str:contrato_id>/comprovante", views.comprovante, name="comprovante"),
 ]
 
 handler404 = "ArtConnect.views.pagina_nao_encontrada"
