@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Excluir conta{% endblock %}
+
+{% block corpo %}
+  <section class="border-y border-line bg-ink text-cream">
+    <div class="mx-auto max-w-3xl px-5 py-16 md:px-8 md:py-24">
+      <p class="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-stage">Zona de perigo</p>
+      <h1 class="font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Excluir minha conta</h1>
+      <p class="mt-4 max-w-[52ch] text-pretty text-cream/70">Essa ação é permanente. Leia com atenção antes de continuar.</p>
+
+      <form action="{% url 'excluir_conta' %}" method="post" class="mt-10 space-y-6">
+        {% csrf_token %}
+        <div class="rounded-2xl border border-stage/40 bg-stage/10 p-5" role="alert">
+          <p class="font-mono text-[11px] uppercase tracking-[0.15em] text-stage">O que acontece</p>
+          <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-cream/85 marker:text-stage">
+            <li>Seu perfil, orçamentos e propostas serão apagados.</li>
+            <li>Você perde o acesso ao painel e ao histórico de contratações.</li>
+            <li>Não é possível desfazer. Para voltar, será preciso criar uma nova conta.</li>
+            <li>Contratações com pagamento retido precisam ser concluídas antes da exclusão.</li>
+          </ul>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2">
+          <label class="block">
+            <span class="{{ ui.rotulo_escuro }}">Sua senha</span>
+            <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required class="{{ ui.campo_escuro }}">
+          </label>
+          <label class="block">
+            <span class="{{ ui.rotulo_escuro }}">Confirmação</span>
+            <input id="confirm-text" name="confirm_text" type="text" placeholder="EXCLUIR" autocomplete="off" spellcheck="false" required class="{{ ui.campo_escuro }}">
+            <span class="mt-1.5 block text-xs text-cream/50">Digite <b class="font-mono text-cream">EXCLUIR</b> para confirmar.</span>
+          </label>
+        </div>
+
+        <label class="flex items-start gap-3 text-sm text-cream/80">
+          <input type="checkbox" id="confirm-check" name="confirm_check" required class="mt-0.5 size-4 accent-stage">
+          Entendo que a exclusão é definitiva e não pode ser desfeita.
+        </label>
+
+        <div class="flex flex-wrap gap-4">
+          <button id="delete-btn" type="submit" disabled class="rounded-full bg-stage px-7 py-3 font-semibold text-cream transition-colors hover:bg-stage-deep disabled:cursor-not-allowed disabled:opacity-40">Excluir minha conta</button>
+          <a href="{% url 'editar_perfil' %}" class="rounded-full border border-cream/25 px-7 py-3 font-semibold transition-colors hover:bg-cream/10">Cancelar e voltar</a>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Habilita o botão só quando tudo estiver preenchido corretamente
+  var senha = document.getElementById("password");
+  var texto = document.getElementById("confirm-text");
+  var caixa = document.getElementById("confirm-check");
+  var botao = document.getElementById("delete-btn");
+  function atualizar() {
+    botao.disabled = !(senha.value.length > 0 && texto.value.trim().toUpperCase() === "EXCLUIR" && caixa.checked);
+  }
+  senha.addEventListener("input", atualizar);
+  texto.addEventListener("input", atualizar);
+  caixa.addEventListener("change", atualizar);
+  atualizar();
+</script>
+{% endblock %}

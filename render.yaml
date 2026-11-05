@@ -1,13 +1,15 @@
 # Configuração de publicação do ArtConnect no Render (render.com)
-# Cria o site e o banco PostgreSQL juntos.
+# Cria o site (Django) e o banco PostgreSQL juntos.
 services:
   - type: web
     name: artconnect
     runtime: python
     plan: free
-    rootDir: Documentos/artconnect
-    buildCommand: pip install -r requirements.txt
-    startCommand: python iniciar_banco.py && gunicorn app:app
+    rootDir: Documentos/artconnect-django
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    # migrate cria as tabelas; importar_versao_flask copia (uma vez) os dados do site antigo;
+    # popular_banco só coloca os dados de exemplo se o banco ainda estiver vazio
+    startCommand: python manage.py migrate && python manage.py importar_versao_flask && python manage.py popular_banco && gunicorn ArtConnect.wsgi
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7

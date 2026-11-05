@@ -1,0 +1,84 @@
+{% load static l10n artconnect %}{% localize off %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Comprovante de contratação · ArtConnect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body class="bg-paper font-body text-ink antialiased print:bg-white">
+  <div class="mx-auto max-w-3xl px-5 py-8 print:max-w-none print:p-0">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <a href="javascript:history.back()" class="text-sm text-ink-soft hover:text-stage">← Voltar</a>
+      <button type="button" onclick="window.print()" class="rounded-full bg-stage px-6 py-3 text-sm font-semibold text-cream transition-colors hover:bg-ink">Imprimir ou salvar em PDF</button>
+    </div>
+
+    <article class="rounded-2xl border border-line bg-cream p-8 ring-1 ring-black/5 print:rounded-none print:border-0 print:p-0 print:ring-0">
+      <header class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-6">
+        <div class="flex items-center gap-2">
+          <span class="size-3 rounded-full bg-stage"></span>
+          <span class="font-display text-2xl leading-none tracking-tight">ArtConnect</span>
+        </div>
+        <div class="text-right">
+          <p class="{{ ui.rotulo }}">Comprovante de contratação</p>
+          <p class="mt-1 font-mono text-sm">Nº {{ contrato.id|stringformat:'s'|slice:':8'|upper }}</p>
+        </div>
+      </header>
+
+      <section class="grid gap-6 py-6 sm:grid-cols-2">
+        <div>
+          <p class="{{ ui.rotulo }}">Contratante</p>
+          <p class="mt-1 font-semibold">{{ contrato.cliente.perfil.nome }}</p>
+          <p class="text-sm text-ink-soft">{{ contrato.cliente.email }}</p>
+        </div>
+        <div>
+          <p class="{{ ui.rotulo }}">Artista</p>
+          <p class="mt-1 font-semibold">{{ contrato.artista.nome_artistico }}</p>
+          <p class="text-sm text-ink-soft">{{ contrato.artista.categoria }} · {{ contrato.artista.cidade }}</p>
+        </div>
+      </section>
+
+      <table class="w-full border-y border-line text-left text-sm">
+        <tbody class="divide-y divide-line">
+          <tr><th class="py-3 pr-4 font-medium text-ink-soft">Evento</th><td class="py-3">{{ contrato.evento.tipo|tipo_evento }}{% if contrato.descricao %} · {{ contrato.descricao }}{% endif %}</td></tr>
+          <tr><th class="py-3 pr-4 font-medium text-ink-soft">Data</th><td class="py-3">{{ contrato.data_evento|data_br }}{% if horario %} às {{ horario|time:'H:i' }}{% endif %}</td></tr>
+          <tr><th class="py-3 pr-4 font-medium text-ink-soft">Local</th><td class="py-3">{{ contrato.local }}</td></tr>
+          <tr><th class="py-3 pr-4 font-medium text-ink-soft">Situação</th><td class="py-3">{{ contrato.status|status_contrato }}</td></tr>
+          <tr><th class="py-3 pr-4 font-medium text-ink-soft">Valor do contrato</th><td class="py-3 font-semibold">{{ contrato.valor_total|moeda }}</td></tr>
+          {% if desconto %}<tr><th class="py-3 pr-4 font-medium text-ink-soft">Desconto (cupom)</th><td class="py-3">− {{ desconto|moeda }}</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      <section class="py-6">
+        <p class="{{ ui.rotulo }}">Pagamentos</p>
+        {% if pagamentos %}
+          <ul class="mt-2 space-y-1 text-sm">
+            {% for pg in pagamentos %}
+              <li class="flex flex-wrap justify-between gap-3"><span>{{ pg.status|status_pagamento }}{% if pg.metodo %} · {{ pg.metodo|upper }}{% endif %}{% if pg.cupom %} · cupom {{ pg.cupom.codigo }}{% endif %}{% if pg.pago_em %} · pago em {{ pg.pago_em|data_br }}{% endif %}</span><span class="font-semibold">{{ pg.valor|moeda }}</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="mt-2 text-sm text-ink-soft">Nenhum pagamento registrado.</p>
+        {% endif %}
+        {% if cancelamento %}
+          <p class="mt-3 text-sm">Cancelado pelo {{ cancelamento.cancelado_por }} em {{ cancelamento.criado_em|data_br }} · reembolso de {{ cancelamento.valor_reembolso|moeda }} ({{ cancelamento.percentual_reembolso }}%).</p>
+        {% endif %}
+      </section>
+
+      <section class="rounded-xl bg-paper p-4 text-xs leading-relaxed text-ink-soft print:border print:border-line">
+        O valor pago fica retido pelo ArtConnect e só é liberado ao artista depois que o contratante confirma que o evento aconteceu.
+        Cancelamentos seguem a política da plataforma: 100% de reembolso com 30 dias ou mais de antecedência, 70% entre 15 e 29 dias, 50% entre 7 e 14 dias e nenhum reembolso com menos de 7 dias.
+        Se o artista cancelar, o contratante recebe 100% de volta.
+      </section>
+
+      <footer class="mt-6 flex flex-wrap justify-between gap-3 font-mono text-[11px] text-ink-soft">
+        <span>Emitido em {{ emitido_em|date:'d/m/Y H:i' }}</span>
+        <span>Código de verificação: {{ verificacao }}</span>
+      </footer>
+    </article>
+  </div>
+</body>
+</html>{% endlocalize %}

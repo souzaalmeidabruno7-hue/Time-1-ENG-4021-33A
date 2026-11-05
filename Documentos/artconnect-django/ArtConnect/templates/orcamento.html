@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Pedir orçamento{% endblock %}
+{% block descricao %}Preencha tipo de serviço, data, horário, duração, local, número de convidados e observações para receber propostas de profissionais para o seu evento.{% endblock %}
+
+{% block corpo %}
+  <section class="border-y border-line bg-ink text-cream">
+    <div class="mx-auto max-w-3xl px-5 py-16 md:px-8 md:py-24">
+      <p class="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-stage">Pedido de orçamento</p>
+      <h1 class="text-balance font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Conte os detalhes do serviço</h1>
+      <p class="mt-4 max-w-[52ch] text-pretty text-cream/70">
+        Quanto mais preciso o pedido, melhores as propostas. Todos os campos abaixo, exceto as observações, são obrigatórios.
+      </p>
+
+      <form action="{% url 'orcamento' %}" method="post" class="mt-10 grid gap-5 sm:grid-cols-2">
+        {% csrf_token %}
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Tipo de evento</span>
+          <select name="tipo_evento" class="{{ ui.campo_escuro }}">
+            {% for codigo, nome in tipos %}
+              <option value="{{ codigo }}" {% if form.tipo_evento == codigo %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Tipo de serviço</span>
+          <select name="categoria" required class="{{ ui.campo_escuro }}">
+            <option value="">Selecione…</option>
+            {% for cat in categorias %}
+              <option value="{{ cat.id }}" {% if form.categoria == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.nome }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Data</span>
+          <input type="date" name="data" min="{{ hoje }}" value="{{ form.data }}" required class="{{ ui.campo_escuro }} [color-scheme:dark]">
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Horário de início</span>
+          <input type="time" name="horario" value="{{ form.horario }}" required class="{{ ui.campo_escuro }} [color-scheme:dark]">
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Duração (horas)</span>
+          <input type="number" name="duracao" min="1" max="24" step="1" placeholder="Ex.: 4" value="{{ form.duracao }}" required class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="block">
+          <span class="{{ ui.rotulo_escuro }}">Estimativa de convidados</span>
+          <input type="number" name="convidados" min="1" step="1" placeholder="Ex.: 120" value="{{ form.convidados }}" required class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="block sm:col-span-2">
+          <span class="{{ ui.rotulo_escuro }}">Local</span>
+          <input type="text" name="local" placeholder="Espaço, bairro e cidade" value="{{ form.local }}" required minlength="5" class="{{ ui.campo_escuro }}">
+        </label>
+
+        <label class="block sm:col-span-2">
+          <span class="{{ ui.rotulo_escuro }}">Observações</span>
+          <textarea name="observacoes" id="observacoes" rows="4" maxlength="600" placeholder="Estilo desejado, estrutura disponível, restrições de horário…" class="{{ ui.campo_escuro }} resize-y">{{ form.observacoes }}</textarea>
+          <span class="mt-1.5 block font-mono text-[11px] text-cream/40"><span id="contador">{{ form.observacoes|length }}</span>/600</span>
+        </label>
+
+        <div class="sm:col-span-2">
+          <button type="submit" class="rounded-full bg-stage px-7 py-3 font-semibold text-cream ring-1 ring-white/10 transition-colors hover:bg-cream hover:text-ink">Enviar pedido</button>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Contador de caracteres das observações
+  var obs = document.getElementById("observacoes");
+  var contador = document.getElementById("contador");
+  obs.addEventListener("input", function () {
+    contador.textContent = obs.value.length;
+  });
+</script>
+{% endblock %}

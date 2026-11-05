@@ -16,4 +16,5 @@ Todas usam a senha `artconnect123`.
 
 - O site está no plano grátis do Render. Depois de 15 minutos sem acesso ele "dorme", e a primeira abertura pode levar uns 50 segundos.
 - O banco grátis do Render expira 30 dias depois de criado. Antes disso, é preciso recriar o banco ou mudar de plano.
-- O código do site está em `Documentos/artconnect/`, e a configuração do Render em `render.yaml`, na raiz do repositório.
+- O código do site (Django) está em `Documentos/artconnect-django/`, e a configuração do Render em `render.yaml`, na raiz do repositório.
+- O admin do Django fica em `/django-admin/` (usuário `admin`).

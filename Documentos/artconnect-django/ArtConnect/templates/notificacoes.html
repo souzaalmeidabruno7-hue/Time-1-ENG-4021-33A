@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Notificações{% endblock %}
+
+
+{% block corpo %}
+  <main class="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-16">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="{{ ui.rotulo }}">Central de avisos</p>
+        <h1 class="mt-3 font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Notificações</h1>
+      </div>
+      {% if notificacoes_novas %}
+        <form action="{% url 'ler_todas_notificacoes' %}" method="post">
+          {% csrf_token %}
+          <button type="submit" class="{{ ui.botao_contorno }}">Marcar todas como lidas</button>
+        </form>
+      {% endif %}
+    </div>
+
+    {% if notificacoes %}
+      <ul class="mt-8 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+        {% for n in notificacoes %}
+          <li>
+            <form action="{% url 'abrir_notificacao' n.id %}" method="post">
+              {% csrf_token %}
+              <button type="submit" class="flex w-full items-start gap-4 px-5 py-4 text-left transition-colors hover:bg-paper {% if not n.lida %}bg-stage/5{% endif %}">
+                <span class="flex size-10 shrink-0 items-center justify-center rounded-full {% if n.lida %}bg-ink/5 text-ink-soft{% else %}bg-stage text-cream{% endif %} text-sm font-semibold" aria-hidden="true">{{ n.tipo|icone_notificacao }}</span>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm {% if not n.lida %}font-semibold{% endif %}">{{ n.texto }}</span>
+                  <span class="mt-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-ink-soft">{{ n.tipo }} · {{ n.criada_em|date:'d/m H:i' }}</span>
+                </span>
+                {% if not n.lida %}<span class="mt-2 size-2.5 shrink-0 rounded-full bg-stage" aria-label="Não lida"></span>{% endif %}
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="mt-8">{% vazio "Nenhuma notificação por enquanto." %}</div>
+    {% endif %}
+  </main>
+{% endblock %}

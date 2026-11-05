@@ -1,0 +1,22 @@
+stateDiagram-v2
+    direction LR
+    state "Contrato" as C {
+        [*] --> aguardando_pagamento: cliente aceita a proposta
+        aguardando_pagamento --> valor_retido: cliente paga (Pix ou boleto)
+        aguardando_pagamento --> cancelado: cliente ou artista cancela
+        valor_retido --> concluido: cliente confirma que o evento aconteceu
+        valor_retido --> cancelado: cancelamento com reembolso
+        concluido --> [*]
+        cancelado --> [*]
+    }
+    state "Pagamento" as P {
+        [*] --> pendente: contrato criado
+        pendente --> retido: pagamento confirmado
+        pendente --> [*]: cancelado antes de pagar (linha apagada)
+        retido --> liberado: evento confirmado
+        retido --> reembolsado: cancelamento com 100%
+        retido --> parcial: cancelamento com 50% ou 70%
+        parcial --> [*]: vira 2 linhas, reembolsado + liberado
+        liberado --> [*]
+        reembolsado --> [*]
+    }

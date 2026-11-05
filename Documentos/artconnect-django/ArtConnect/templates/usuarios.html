@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Usuários{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-6xl px-5 py-12 md:px-8 md:py-16">
+    <p class="{{ ui.rotulo }}">Administração</p>
+    <h1 class="mt-3 font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Usuários cadastrados</h1>
+    <p class="mt-3 text-ink-soft">{{ usuarios|length }} usuário(s) encontrado(s).</p>
+
+    <form action="{% url 'listar_usuarios' %}" method="get" class="mt-8 grid gap-3 rounded-2xl border border-line bg-cream p-4 ring-1 ring-black/5 sm:grid-cols-[1fr_14rem_auto]">
+      <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome, usuário ou e-mail" aria-label="Buscar"
+             class="w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-stage">
+      <select name="papel" aria-label="Tipo de conta" class="w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-stage">
+        <option value="">Todos os tipos</option>
+        <option value="cliente" {% if papel == 'cliente' %}selected{% endif %}>Clientes</option>
+        <option value="artista" {% if papel == 'artista' %}selected{% endif %}>Artistas</option>
+        <option value="admin" {% if papel == 'admin' %}selected{% endif %}>Administradores</option>
+      </select>
+      <button type="submit" class="rounded-full bg-ink px-6 py-3 text-sm font-semibold text-cream transition-colors hover:bg-stage">Filtrar</button>
+    </form>
+
+    {% if usuarios %}
+      <div class="mt-6 overflow-x-auto rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead class="border-b border-line">
+            <tr class="{{ ui.rotulo }}">
+              <th class="px-5 py-3 font-medium">Usuário</th><th class="px-5 py-3 font-medium">Nome</th><th class="px-5 py-3 font-medium">E-mail</th>
+              <th class="px-5 py-3 font-medium">Cidade</th><th class="px-5 py-3 font-medium">Tipo</th><th class="px-5 py-3 font-medium">Desde</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            {% for u in usuarios %}
+              <tr>
+                <td class="px-5 py-3 font-mono text-xs">{{ u.username }}</td>
+                <td class="px-5 py-3 font-semibold">{{ u.perfil.nome }}</td>
+                <td class="px-5 py-3 text-ink-soft">{{ u.email }}</td>
+                <td class="px-5 py-3 text-ink-soft">{{ u.perfil.cidade|default:'—' }}</td>
+                <td class="px-5 py-3">{% selo u.perfil.papel u.perfil.papel|tom_papel %}</td>
+                <td class="px-5 py-3 text-ink-soft">{{ u.perfil.criado_em|data_br }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="mt-6">{% vazio "Nenhum usuário encontrado." %}</div>
+    {% endif %}
+  </main>
+{% endblock %}

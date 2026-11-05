@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Conversa{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-16">
+    <a href="{% if sou_cliente %}{% url 'painel' %}?aba=mensagens{% else %}{% url 'artista_painel' %}?aba=agenda{% endif %}" class="text-sm text-ink-soft hover:text-stage">← Voltar</a>
+    <div class="mt-6 flex items-center gap-4">
+      {% foto contrato.artista "size-14 rounded-full ring-1 ring-black/10" %}
+      <div>
+        <p class="{{ ui.rotulo }}">Conversa do contrato · {{ contrato.data_evento|data_br }}</p>
+        <h1 class="mt-1 font-display text-3xl uppercase leading-none tracking-tight">{% if sou_cliente %}{{ contrato.artista.nome_artistico }}{% else %}{{ contrato.cliente.perfil.nome }}{% endif %}</h1>
+      </div>
+      <span class="ml-auto">{% if contrato.status == 'cancelado' %}{% selo contrato.status|status_contrato %}{% else %}{% selo contrato.status|status_contrato 'stage' %}{% endif %}</span>
+    </div>
+
+    <div class="mt-8 rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+      <div class="max-h-[60vh] space-y-3 overflow-y-auto px-5 py-6">
+        {% for m in mensagens %}
+          <p class="max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2 text-sm {% if m.minha %}ml-auto bg-ink text-cream{% else %}bg-paper text-ink ring-1 ring-black/5{% endif %}">{% if not m.minha %}<b class="block text-xs">{{ m.remetente.perfil.nome }}</b>{% endif %}{{ m.conteudo }}
+            <span class="mt-1 block font-mono text-[10px] opacity-60">{{ m.enviada_em|date:'d/m H:i' }}{% if m.minha and m.lida %} · lida{% endif %}</span>
+          </p>
+        {% empty %}
+          <p class="py-8 text-center text-sm text-ink-soft">Nenhuma mensagem ainda. Combine aqui horário de chegada, som, roteiro…</p>
+        {% endfor %}
+        <span id="fim"></span>
+      </div>
+      {% if pode_responder %}
+        <form method="post" class="flex items-end gap-3 border-t border-line p-4">
+          {% csrf_token %}
+          <label class="flex-1">
+            <span class="sr-only">Mensagem</span>
+            <textarea name="conteudo" rows="2" maxlength="1000" required placeholder="Escreva sua mensagem" class="w-full resize-none rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-stage"></textarea>
+          </label>
+          <button type="submit" class="rounded-full bg-stage px-6 py-3 text-sm font-semibold text-cream transition-colors hover:bg-ink">Enviar</button>
+        </form>
+      {% else %}
+        <p class="border-t border-line px-5 py-4 text-sm text-ink-soft">
+          {% if contrato.status == 'cancelado' %}Este contrato foi cancelado: a conversa ficou só para consulta.{% else %}Este artista ainda não tem conta na plataforma, então não pode responder por aqui.{% endif %}
+        </p>
+      {% endif %}
+    </div>
+    <p class="mt-3 text-xs text-ink-soft">Por segurança, nunca combine pagamento por fora da plataforma. Isso pode ser denunciado.</p>
+  </main>
+{% endblock %}

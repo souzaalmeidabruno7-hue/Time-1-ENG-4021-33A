@@ -1,0 +1,51 @@
+{% load static l10n %}{% localize off %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Entrar{% endblock %} · ArtConnect</title>
+  <meta name="description" content="Acesse sua conta ArtConnect e encontre o artista ideal para seu casamento, aniversário ou evento corporativo. Orçamentos, contratos e pagamentos em um só lugar.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body class="bg-cream font-body text-ink antialiased">
+  <div class="grid min-h-screen grid-cols-1 lg:grid-cols-[42%_1fr]">
+
+    {# Lado esquerdo: marca e proposta de valor #}
+    <aside class="flex flex-col justify-between gap-10 bg-ink px-7 py-7 text-cream sm:px-10 lg:px-12 lg:py-10">
+      <a href="{% url 'index' %}" class="flex items-center gap-2">
+        <span aria-hidden="true" class="size-2.5 rounded-full bg-stage"></span>
+        <span class="font-display text-2xl leading-none tracking-[0.06em] text-cream">ARTCONNECT</span>
+      </a>
+
+      <div class="max-w-md">
+        <h1 class="font-display text-4xl leading-[1.06] tracking-[0.01em] text-cream sm:text-5xl lg:text-[3.4rem]">
+          {% block chamada %}Encontre o artista ideal para seu evento{% endblock %}
+        </h1>
+        <p class="mt-5 max-w-sm text-[0.95rem] leading-relaxed text-line">
+          {% block apoio %}Entre na sua conta para gerenciar orçamentos, contratos e pagamentos de música, gastronomia, entretenimento e foto/vídeo — tudo em um só lugar.{% endblock %}
+        </p>
+      </div>
+
+      <p class="text-xs leading-relaxed text-line/75">© 2026 ArtConnect · Feito para artistas locais no Brasil</p>
+    </aside>
+
+    {# Lado direito: formulário #}
+    <main class="flex items-center justify-center px-6 py-12 sm:px-10 lg:px-12">
+      <div class="w-full max-w-[380px]">
+        {% if messages %}
+            <ul class="mb-6 space-y-2" role="status">
+              {% for mensagem in messages %}
+                <li class="rounded-xl border px-4 py-3 text-sm font-medium {% if mensagem.tags == 'erro' %}border-stage/40 bg-stage/10 text-stage-deep{% else %}border-ok/30 bg-ok/10 text-ok{% endif %}">{{ mensagem }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+        {% block formulario %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</body>
+</html>{% endlocalize %}

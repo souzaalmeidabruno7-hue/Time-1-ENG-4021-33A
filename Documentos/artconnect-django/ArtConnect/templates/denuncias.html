@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Denúncias{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-6xl px-5 py-12 md:px-8 md:py-16">
+    <p class="{{ ui.rotulo }}">Administração · moderação</p>
+    <h1 class="mt-3 font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Fila de denúncias</h1>
+    <p class="mt-3 max-w-[60ch] text-pretty text-ink-soft">Prazo de análise: 48 horas. Procedente esconde a avaliação ou suspende o perfil; improcedente mantém tudo como está.</p>
+
+    <nav aria-label="Filtro" class="mt-8 flex flex-wrap gap-2 border-b border-line pb-3">
+      {% url 'admin_denuncias' as url_denuncias %}
+      {% aba "Abertas" url_denuncias "aberta" filtro totais.aberta "status" %}
+      {% aba "Procedentes" url_denuncias "procedente" filtro 0 "status" %}
+      {% aba "Improcedentes" url_denuncias "improcedente" filtro 0 "status" %}
+    </nav>
+
+    {% if denuncias %}
+      <ul class="mt-6 space-y-4">
+        {% for d in denuncias %}
+          <li class="rounded-2xl border border-line bg-cream p-5 ring-1 ring-black/5">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  {% if d.avaliacao_id %}{% selo "avaliação" "ink" %}{% else %}{% selo "perfil" "stage" %}{% endif %}
+                  {% selo d.get_motivo_display 'aviso' %}
+                </div>
+                <p class="mt-3 font-display text-xl uppercase leading-none tracking-tight">
+                  <a href="{% url 'artista_detalhe' d.artista_ref.id %}" class="hover:text-stage">{{ d.artista_ref.nome_artistico }}</a>
+                </p>
+                {% if d.avaliacao_id %}
+                  <blockquote class="mt-3 rounded-xl bg-paper px-4 py-3 text-sm">
+                    {% estrelas d.avaliacao.nota "text-xs" %} “{{ d.avaliacao.comentario|default:"Sem comentário" }}”
+                    <span class="mt-1 block text-xs text-ink-soft">— {{ d.avaliacao.cliente.perfil.nome }}{% if d.avaliacao.oculta %} · oculta{% endif %}</span>
+                  </blockquote>
+                {% endif %}
+                {% if d.detalhes %}<p class="mt-3 text-sm text-ink-soft">Denunciante: “{{ d.detalhes }}”</p>{% endif %}
+                <p class="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-ink-soft">por {{ d.denunciante.perfil.nome }} · {{ d.criada_em|date:'d/m/Y H:i' }}</p>
+              </div>
+              {% if d.status != 'aberta' %}
+                <div class="max-w-xs text-right text-sm">
+                  <p class="text-ink-soft">Decisão em {{ d.resolvida_em|date:'d/m H:i' }}</p>
+                  <p class="mt-1">{{ d.decisao }}</p>
+                  {% if d.status == 'procedente' and d.artista_id and not d.artista.ativo %}
+                    <form action="{% url 'reativar_artista' d.artista_id %}" method="post" class="mt-3">
+                      {% csrf_token %}
+                      <button type="submit" class="{{ ui.botao_contorno }}">Reativar perfil</button>
+                    </form>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+            {% if d.status == 'aberta' %}
+              <form action="{% url 'decidir_denuncia' d.id %}" method="post" class="mt-5 grid items-end gap-3 border-t border-line pt-5 sm:grid-cols-[1fr_auto_auto]">
+                {% csrf_token %}
+                <label class="block">
+                  <span class="{{ ui.rotulo }}">Justificativa</span>
+                  <input name="justificativa" minlength="5" maxlength="300" required placeholder="Ex.: comentário com ofensa pessoal" class="{{ ui.campo_claro }}">
+                </label>
+                <button type="submit" name="decisao" value="improcedente" class="{{ ui.botao_contorno }}">Improcedente</button>
+                <button type="submit" name="decisao" value="procedente" class="rounded-full bg-stage px-5 py-2.5 text-sm font-semibold text-cream transition-colors hover:bg-ink">
+                  Procedente · {% if d.avaliacao_id %}ocultar avaliação{% else %}suspender perfil{% endif %}
+                </button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="mt-6">{% vazio "Nenhuma denúncia nessa lista." %}</div>
+    {% endif %}
+  </main>
+{% endblock %}

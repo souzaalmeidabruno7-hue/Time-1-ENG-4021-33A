@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load artconnect %}
+{% block titulo %}Suporte · Administração{% endblock %}
+
+{% block corpo %}
+  <main class="mx-auto max-w-6xl px-5 py-12 md:px-8 md:py-16">
+    <p class="{{ ui.rotulo }}">Administração · suporte</p>
+    <h1 class="mt-3 font-display text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl">Fila de chamados</h1>
+    <p class="mt-3 max-w-[60ch] text-pretty text-ink-soft">Ordenados pelo prazo da primeira resposta. Pagamento e contrato: 24h · conta e erro no site: 48h · dúvida: 72h.</p>
+
+    {% url 'admin_suporte' as url_suporte %}
+    <nav aria-label="Filtro" class="mt-8 flex flex-wrap gap-2 border-b border-line pb-3">
+      {% aba "Abertos" url_suporte "aberto" filtro totais.aberto "status" %}
+      {% aba "Em andamento" url_suporte "em_andamento" filtro totais.em_andamento "status" %}
+      {% aba "Resolvidos" url_suporte "resolvido" filtro 0 "status" %}
+    </nav>
+
+    {% if chamados %}
+      <ul class="mt-6 divide-y divide-line rounded-2xl border border-line bg-cream ring-1 ring-black/5">
+        {% for ch in chamados %}
+          <li>
+            <a href="{% url 'chamado' ch.id %}" class="grid items-center gap-3 px-5 py-4 transition-colors hover:bg-paper sm:grid-cols-[1fr_auto]">
+              <div class="min-w-0">
+                <p class="truncate font-semibold">{{ ch.assunto }}</p>
+                <p class="mt-1 text-xs text-ink-soft">{{ ch.get_categoria_display }} · {{ ch.user.perfil.nome }} · prazo {{ ch.prazo_resposta|date:'d/m H:i' }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                {% if ch.atrasado %}{% selo "atrasado" "stage" %}{% endif %}
+                {% selo ch.get_status_display ch.status|tom_suporte %}
+              </div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="mt-6">{% vazio "Nenhum chamado nessa lista." %}</div>
+    {% endif %}
+  </main>
+{% endblock %}
