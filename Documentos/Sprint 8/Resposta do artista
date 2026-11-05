@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ArtConnect · Contrate artistas locais</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ede5d4;
+      --bg-soft: #f7f2ea;
+      --ink: #140f0d;
+      --ink-card: #1e1714;
+      --line: rgba(20, 15, 13, 0.14);
+      --line-dark: rgba(245, 240, 232, 0.16);
+      --muted: #6b6159;
+      --muted-light: #b9ada0;
+      --cream: #f5f0e8;
+      --accent: #d04727;
+      --accent-hover: #b93b1e;
+      --coral: #f08a6e;
+      --gutter: 22px;
+      --radius-lg: 28px;
+      --radius-md: 24px;
+      --radius-pill: 999px;
+      --font-display: "Anton", "Arial Narrow", Impact, sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+      /* Para usar a foto do topo da home, troque por: url("https://.../foto.jpg") */
+      --hero-img: none;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+      background: var(--bg); color: var(--ink); font-family: var(--font-body); line-height: 1.5;
+    }
+    [hidden] { display: none !important; }
+    h1, h2, h3, p, blockquote, figure { margin: 0; }
+    a { color: inherit; }
+    main { flex: 1; display: flex; flex-direction: column; }
+    .view { flex: 1; display: flex; flex-direction: column; }
+    .view[hidden] { display: none; }
+
+    /* ---------- Botões ---------- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border: 0; border-radius: var(--radius-pill); padding: 12px 17px;
+      font: 600 15px/1 var(--font-body); text-decoration: none; cursor: pointer; white-space: nowrap;
+      transition: background-color .15s ease, transform .1s ease, border-color .15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .seg input:focus-visible + span {
+      outline: 3px solid var(--accent); outline-offset: 3px;
+    }
+    .btn--dark { background: var(--ink); color: var(--cream); }
+    .btn--dark:hover { background: #2a201c; }
+    .btn--out { background: transparent; color: var(--ink); border: 1px solid rgba(20,15,13,.3); }
+    .btn--out:hover { border-color: var(--ink); }
+    .btn--accent { background: var(--accent); color: #fff; }
+    .btn--accent:hover { background: var(--accent-hover); }
+    .btn--ghost { background: transparent; color: var(--cream); border: 1px solid var(--line-dark); }
+    .btn--ghost:hover { border-color: rgba(245,240,232,.4); }
+    .btn--lg { padding: 19px 30px; font-size: 17px; }
+    .btn--block { width: 100%; padding: 18px 24px; font-size: 17px; }
+    .btn--wide { width: 100%; padding: 20px 24px; font-size: 18px; }
+
+    /* ---------- Cabeçalho ---------- */
+    .header {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px var(--gutter); min-height: 68px;
+      background: rgba(237, 229, 212, .9);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .header__right { display: flex; align-items: center; gap: 10px; }
+    .logo {
+      display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink);
+      font-family: var(--font-display); font-size: 28px; line-height: 1; letter-spacing: -0.02em;
+    }
+    .logo::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); flex: none; }
+    body[data-view="login"] .header, body[data-view="cadastro"] .header { padding: 20px 24px; }
+    body[data-view="login"] .logo, body[data-view="cadastro"] .logo { font-size: 34px; gap: 12px; }
+    body[data-view="login"] .logo::before, body[data-view="cadastro"] .logo::before { width: 18px; height: 18px; }
+    body[data-view="login"] .btn--dark, body[data-view="cadastro"] .btn--dark { padding: 14px 24px; font-size: 17px; }
+
+    /* ---------- Blocos da home ---------- */
+    .section { padding: 72px var(--gutter); border-top: 1px solid var(--line); }
+    .section--sand { background: #eee6d6; }
+    .section--soft { background: var(--bg-soft); }
+    .section--dark { background: #17110f; color: var(--cream); border-top: 0; }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+
+    .eyebrow {
+      margin-bottom: 19px; font: 400 12px/1.4 var(--font-mono);
+      letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted);
+    }
+    .section--dark .eyebrow { color: var(--accent); }
+    .title {
+      font-family: var(--font-display); font-weight: 400; font-size: 33px; line-height: 1.02;
+      letter-spacing: -0.02em; text-transform: uppercase; margin-bottom: 40px;
+    }
+    .link-mono {
+      display: inline-block; font: 400 12px/1.2 var(--font-mono); letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--accent); text-decoration: none;
+    }
+    .link-mono:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+    /* Hero */
+    .hero { position: relative; color: var(--cream); padding: 44px var(--gutter) 88px; overflow: hidden;
+      background: linear-gradient(180deg, #2b1b13 0%, #1c120d 60%, #140f0d 100%); }
+    .hero::before { content: ""; position: absolute; inset: 0; background-image: var(--hero-img); background-size: cover; background-position: center; opacity: .55; }
+    .hero::after { content: ""; position: absolute; inset: 0;
+      background: radial-gradient(70% 45% at 85% 70%, rgba(214,170,120,.28), transparent 70%), radial-gradient(60% 40% at 10% 90%, rgba(245,240,232,.12), transparent 70%); }
+    .hero > * { position: relative; z-index: 1; }
+    .hero h1 { font-family: var(--font-display); font-weight: 400; font-size: 44px; line-height: .98; letter-spacing: -0.02em; text-transform: uppercase; margin-bottom: 14px; max-width: 520px; }
+    .hero__lead { font-size: 16px; color: var(--muted-light); margin-bottom: 24px; max-width: 460px; }
+    .search { max-width: 520px; display: grid; gap: 12px; padding: 17px; margin-bottom: 28px;
+      background: rgba(30,23,20,.94); border: 1px solid var(--line-dark); border-radius: var(--radius-lg); }
+    .input-sm {
+      width: 100%; height: 52px; padding: 0 20px; background: transparent; color: var(--cream);
+      border: 1px solid var(--line-dark); border-radius: var(--radius-pill); font: 400 16px/1 var(--font-body);
+    }
+    .input-sm::placeholder { color: rgba(185,173,160,.6); }
+    .input-sm:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(208,71,39,.28); }
+    .search .btn--accent { height: 52px; padding: 0 24px; font-size: 17px; border: 1px solid rgba(20,15,13,.5); }
+    .stats { display: flex; flex-wrap: wrap; gap: 6px 26px; font: 400 13px/1.4 var(--font-mono); color: var(--muted-light); margin-bottom: 22px; }
+    .stats strong, .escrow strong { color: var(--cream); font-weight: 600; }
+    .escrow { font: 400 13px/1.4 var(--font-mono); color: var(--muted-light); }
+
+    /* Cards */
+    .stack { display: grid; gap: 18px; }
+    .cat {
+      background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius-md);
+      padding: 22px; box-shadow: 0 1px 0 rgba(20,15,13,.04);
+    }
+    .cat h3 { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: 1.05; text-transform: uppercase; letter-spacing: -0.01em; margin-bottom: 8px; }
+    .cat p { color: var(--muted); font-size: 15px; line-height: 1.4; margin-bottom: 14px; }
+
+    .step { padding: 26px; }
+    .step .num { font-family: var(--font-display); font-size: 44px; line-height: 1; color: var(--accent); margin-bottom: 14px; }
+    .step h3 { font-size: 23px; margin-bottom: 8px; }
+    .step p { margin-bottom: 18px; }
+
+    /* Destaque (carrossel). Na tela do celular o primeiro card encosta na borda, como nos prints */
+    .hint { margin: -2px 0 34px; font: 400 12px/1.4 var(--font-mono); letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
+    .rail {
+      display: flex; gap: 22px; overflow-x: auto; scroll-snap-type: x mandatory;
+      margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 14px 0;
+    }
+    .rail::-webkit-scrollbar { height: 4px; }
+    .rail::-webkit-scrollbar-track { background: transparent; }
+    .rail::-webkit-scrollbar-thumb { background: #c9c2b5; border-radius: 4px; }
+    .talent {
+      flex: 0 0 289px; scroll-snap-align: start; background: #efe6d6; border: 1px solid var(--line);
+      border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .talent__img { height: 199px; }
+    .talent__img--a { background: radial-gradient(55% 65% at 62% 35%, #f2a64d 0%, #8a4316 48%, #1b100a 100%); }
+    .talent__img--b { background: radial-gradient(65% 60% at 30% 40%, #e1456b 0%, #5a1630 52%, #12080c 100%); }
+    .talent__img--c { background: radial-gradient(60% 70% at 50% 30%, #d9b27a 0%, #5e3c20 52%, #150e09 100%); }
+    .talent__body { padding: 18px 18px 20px; }
+    .talent__row { display: flex; justify-content: space-between; align-items: baseline; }
+    .talent__tag { font: 400 12px/1 var(--font-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); }
+    .talent__rate { font-size: 16px; font-weight: 500; }
+    .talent h3 { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1; letter-spacing: -0.01em; text-transform: uppercase; margin: 12px 0 6px; }
+    .talent__city { color: var(--muted); font-size: 16px; margin-bottom: 12px; }
+    .talent__price { font: 400 13px/1 var(--font-mono); color: var(--muted); }
+    .talent__price b { color: var(--ink); font-weight: 600; font-size: 14px; }
+
+    /* Depoimentos */
+    .review { background: #211a17; border: 1px solid rgba(245,240,232,.12); border-radius: var(--radius-lg); padding: 26px; }
+    .stars { color: var(--accent); font-size: 16px; letter-spacing: 1px; margin-bottom: 18px; }
+    .review blockquote { font-size: 18px; line-height: 1.43; margin-bottom: 20px; }
+    .who { font: 400 12px/1.5 var(--font-mono); letter-spacing: .13em; text-transform: uppercase; color: var(--muted-light); }
+    .cta { margin-top: 44px; display: grid; gap: 17px; justify-items: start; }
+
+    .footer-home { padding: 48px var(--gutter) 56px; background: #eee6d6; border-top: 1px solid var(--line); }
+    .footer-home .logo { font-size: 25px; }
+    .footer-home p { margin-top: 22px; font: 400 13px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted); }
+
+    /* ======================================================
+       NOVO · Resposta do artista (dentro de "Quem já contratou")
+       ====================================================== */
+    .as-artist { margin: -20px 0 28px; max-width: 520px; font: 400 12px/1.6 var(--font-mono); letter-spacing: .06em; color: var(--muted-light); }
+    .as-artist strong { color: var(--cream); font-weight: 600; }
+    .reply { margin-top: 24px; padding: 4px 0 2px 18px; border-left: 3px solid var(--accent); }
+    .reply__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; }
+    .reply__badge { display: inline-block; padding: 6px 11px; border-radius: var(--radius-pill); background: rgba(208,71,39,.16); color: var(--coral);
+      font: 500 11px/1 var(--font-mono); letter-spacing: .16em; text-transform: uppercase; }
+    .reply__name { font-weight: 600; font-size: 16px; }
+    .reply__text { font-size: 16px; line-height: 1.5; color: var(--cream); opacity: .92; overflow-wrap: anywhere; }
+    .reply__meta { margin-top: 10px; font: 400 12px/1.4 var(--font-mono); letter-spacing: .06em; color: var(--muted-light); }
+    .rp-actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .rp-actions[hidden], .rp-form[hidden], .reply[hidden] { display: none; }
+    .rp-btn {
+      appearance: none; background: transparent; color: var(--cream); cursor: pointer;
+      border: 1px solid var(--line-dark); border-radius: var(--radius-pill); padding: 12px 18px;
+      font: 500 12px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase;
+      transition: border-color .15s ease, background-color .15s ease;
+    }
+    .rp-btn:hover { border-color: rgba(245,240,232,.45); }
+    .rp-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .rp-btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .rp-btn--danger { color: var(--coral); }
+    .rp-form { margin-top: 20px; display: grid; gap: 12px; }
+    .rp-label { font: 500 12px/1.2 var(--font-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted-light); }
+    .rp-textarea {
+      width: 100%; min-height: 120px; resize: vertical; padding: 14px 16px; background: transparent; color: var(--cream);
+      border: 1px solid var(--line-dark); border-radius: 20px; font: 400 16px/1.5 var(--font-body);
+    }
+    .rp-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(208,71,39,.28); }
+    .rp-textarea::placeholder { color: rgba(185,173,160,.55); }
+    .rp-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+    .rp-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    .rp-count { font: 400 12px/1 var(--font-mono); letter-spacing: .06em; color: var(--muted-light); }
+    .rp-count.is-near { color: var(--coral); }
+    .rp-error { color: var(--coral); font-size: 14px; min-height: 0; }
+    .rp-status { margin-top: 12px; font: 400 12px/1.4 var(--font-mono); letter-spacing: .06em; color: var(--muted-light); }
+    .rp-status:empty { display: none; }
+
+    /* ---------- Login e Cadastro ---------- */
+    .auth-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px 56px; }
+    .auth { width: 100%; max-width: 460px; }
+    .auth-eyebrow { margin: 0 0 14px; font: 500 14px/1.4 var(--font-mono); letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); }
+    .auth-title { margin: 0 0 16px; font-family: var(--font-display); font-weight: 400; font-size: clamp(48px, 14vw, 72px); line-height: 0.95; letter-spacing: -0.02em; text-transform: uppercase; }
+    .auth-lead { margin: 0 0 32px; font-size: 18px; color: var(--muted); }
+    .auth-card { background: var(--ink-card); color: var(--cream); border: 1px solid var(--line-dark); border-radius: var(--radius-lg); padding: 32px 24px 28px; }
+    .field { margin-bottom: 24px; }
+    .field > label, .field .legend, .label-row label {
+      display: block; margin-bottom: 12px; font: 500 14px/1.2 var(--font-mono);
+      letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted-light);
+    }
+    .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .link-small { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); text-decoration: none; }
+    .link-small:hover { text-decoration: underline; }
+    .input {
+      width: 100%; height: 60px; padding: 0 22px; background: transparent; color: var(--cream);
+      border: 1px solid var(--line-dark); border-radius: var(--radius-pill); font: 400 18px/1 var(--font-body);
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .input::placeholder { color: rgba(185,173,160,.55); }
+    .input:hover { border-color: rgba(245,240,232,.32); }
+    .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(208,71,39,.28); }
+    .input[aria-invalid="true"] { border-color: var(--coral); }
+    select.input { appearance: none; -webkit-appearance: none; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23b9ada0' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 22px center; padding-right: 52px; }
+    select.input option { color: #140f0d; }
+    .input:-webkit-autofill, .input:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--cream); caret-color: var(--cream);
+      -webkit-box-shadow: 0 0 0 1000px var(--ink-card) inset; transition: background-color 9999s ease-in-out 0s;
+    }
+    .field-error { margin-top: 10px; padding-left: 8px; font-size: 14px; color: var(--coral); }
+    .field-error:empty { display: none; }
+    .form-msg { margin: -4px 0 20px; padding: 12px 16px; border-radius: 18px; background: rgba(240,138,110,.12); color: var(--coral); font-size: 15px; }
+    .form-msg:empty { display: none; }
+    .remember { display: flex; align-items: center; gap: 12px; margin: -4px 0 28px; font-size: 15px; color: var(--muted-light); cursor: pointer; }
+    .remember input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--accent); }
+    .signup { margin: 24px 0 0; text-align: center; font-size: 15px; color: var(--muted-light); }
+    .signup a { color: var(--cream); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+    .signup a:hover { color: var(--accent); }
+    .secure { margin: 24px 0 0; font: 400 13px/1.5 var(--font-mono); letter-spacing: 0.04em; color: var(--muted); }
+    .secure strong { color: var(--ink); font-weight: 500; }
+    .footer-auth { padding: 24px; border-top: 1px solid var(--line); font: 400 13px/1.5 var(--font-mono); letter-spacing: 0.04em; color: var(--muted); }
+
+    .seg-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border: 0; padding: 0; margin: 0 0 24px; min-width: 0; }
+    .seg-group legend { padding: 0; margin-bottom: 12px; font: 500 14px/1.2 var(--font-mono); letter-spacing: .28em; text-transform: uppercase; color: var(--muted-light); }
+    .seg { position: relative; display: block; cursor: pointer; }
+    .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+    .seg span { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 56px; padding: 8px 12px; border: 1px solid var(--line-dark); border-radius: var(--radius-pill); font-weight: 600; font-size: 15px; color: var(--muted-light); transition: all .15s ease; }
+    .seg input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .field-pair[hidden] { display: none; }
+    .terms { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 8px; font-size: 15px; color: var(--muted-light); cursor: pointer; }
+    .terms input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+    .terms a { color: var(--cream); text-underline-offset: 3px; }
+    .terms-wrap { margin-bottom: 28px; }
+
+    /* Aviso rápido */
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 50; max-width: calc(100% - 32px);
+      padding: 14px 20px; border-radius: var(--radius-pill); background: var(--ink); color: var(--cream);
+      font: 500 14px/1.3 var(--font-body); box-shadow: 0 8px 30px rgba(0,0,0,.3);
+      opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+    /* ---------- Telas maiores ---------- */
+    @media (min-width: 768px) {
+      :root { --gutter: 48px; }
+      .header { padding: 18px var(--gutter); }
+      body[data-view="login"] .header, body[data-view="cadastro"] .header { padding: 24px 48px; }
+      .section { padding: 104px var(--gutter); }
+      .hero { padding: 88px var(--gutter) 112px; }
+      .hero h1 { font-size: 72px; max-width: 760px; }
+      .search { grid-template-columns: 1fr 1fr; max-width: 640px; }
+      .search .btn--accent { grid-column: 1 / -1; }
+      .stack--3 { grid-template-columns: repeat(3, 1fr); }
+      .stack--reviews { grid-template-columns: repeat(2, 1fr); align-items: start; }
+      .title { font-size: 56px; }
+      .rail { margin: 0; padding: 0 0 14px; }
+      .footer-home { padding: 56px var(--gutter) 64px; }
+      .auth-main { padding: 72px 48px 96px; }
+      .auth-card { padding: 40px 36px 32px; }
+      .footer-auth { padding: 28px 48px; }
+    }
+    @media (max-width: 420px) { .header__right { gap: 8px; } .header__right .btn--out { padding: 10px 13px; } }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body data-view="home">
+
+  <header class="header">
+    <a class="logo" href="#/">ArtConnect</a>
+    <div class="header__right">
+      <button type="button" class="btn btn--out" id="logout" hidden>Sair</button>
+      <a class="btn btn--dark" href="#/orcamento" data-soon="Pedir orçamento">Pedir orçamento</a>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- =====================  TELA 1 · HOME  ===================== -->
+    <div class="view" data-view="home">
+
+      <!-- Topo (hero): o início dele não aparece nos prints, então título e campos são aproximados -->
+      <section class="hero">
+        <h1>O artista certo para o seu evento</h1>
+        <p class="hero__lead">Compare profissionais da sua cidade, peça orçamento e contrate com segurança.</p>
+        <form class="search" onsubmit="return false">
+          <input class="input-sm" type="text" placeholder="Categoria (DJ, Chef, Mágico…)" aria-label="Categoria">
+          <input class="input-sm" type="text" placeholder="Cidade" aria-label="Cidade">
+          <button class="btn btn--accent" type="submit" data-soon="Busca de artistas">Encontrar Artistas</button>
+        </form>
+        <p class="stats"><span><strong>1.240+</strong> profissionais</span><span><strong>38</strong> cidades</span></p>
+        <p class="escrow"><strong>Pagamento retido</strong> até o dia do evento</p>
+      </section>
+
+      <!-- (A) Categorias -->
+      <section class="section section--sand">
+        <div class="wrap">
+          <p class="eyebrow">(A) Categorias</p>
+          <h2 class="title">Muito além da música</h2>
+          <div class="stack stack--3">
+            <article class="cat"><h3>Chefs &amp; Buffet</h3><p>Menus autorais, buffet e equipe de salão</p><a class="link-mono" href="#/talentos" data-soon="Lista de talentos">Ver talentos →</a></article>
+            <article class="cat"><h3>Mágicos</h3><p>Mágica de perto, mentalismo e shows de palco</p><a class="link-mono" href="#/talentos" data-soon="Lista de talentos">Ver talentos →</a></article>
+            <article class="cat"><h3>DJs</h3><p>Sets sob medida com som e iluminação</p><a class="link-mono" href="#/talentos" data-soon="Lista de talentos">Ver talentos →</a></article>
+            <article class="cat"><h3>Cantores</h3><p>Voz e violão, trio ou banda completa</p><a class="link-mono" href="#/talentos" data-soon="Lista de talentos">Ver talentos →</a></article>
+            <article class="cat"><h3>Foto &amp; Vídeo</h3><p>Cobertura documental e filmes de evento</p><a class="link-mono" href="#/talentos" data-soon="Lista de talentos">Ver talentos →</a></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- (B) Em destaque -->
+      <section class="section section--soft">
+        <div class="wrap">
+          <p class="eyebrow">(B) Em destaque</p>
+          <h2 class="title">Talentos mais bem avaliados</h2>
+          <p class="hint">Arraste para o lado</p>
+          <div class="rail" tabindex="0" role="region" aria-label="Talentos mais bem avaliados">
+            <article class="talent"><div class="talent__img talent__img--a" role="img" aria-label="DJ na cabine"></div>
+              <div class="talent__body"><div class="talent__row"><span class="talent__tag">DJ Set</span><span class="talent__rate">★ 4.9</span></div>
+              <h3>Selva Ritmo</h3><p class="talent__city">São Paulo</p><p class="talent__price">a partir de <b>R$ 2.400</b></p></div></article>
+            <article class="talent"><div class="talent__img talent__img--b" role="img" aria-label="Pista de dança"></div>
+              <div class="talent__body"><div class="talent__row"><span class="talent__tag">Eletrônico</span><span class="talent__rate">★ 4.8</span></div>
+              <h3>Pulso Tribal</h3><p class="talent__city">Brasília</p><p class="talent__price">a partir de <b>R$ 2.100</b></p></div></article>
+            <article class="talent"><div class="talent__img talent__img--c" role="img" aria-label="Mágico no palco"></div>
+              <div class="talent__body"><div class="talent__row"><span class="talent__tag">Mágico</span><span class="talent__rate">★ 5.0</span></div>
+              <h3>Mago Theo</h3><p class="talent__city">São Paulo</p><p class="talent__price">a partir de <b>R$ 1.800</b></p></div></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- (C) Como funciona -->
+      <section class="section section--sand">
+        <div class="wrap">
+          <p class="eyebrow">(C) Como funciona</p>
+          <h2 class="title">Três passos até o contrato</h2>
+          <div class="stack stack--3">
+            <article class="cat step"><div class="num">01</div><h3>Peça um orçamento</h3><p>Conte data, horário, duração, local e número de convidados.</p><a class="link-mono" href="#/orcamento" data-soon="Pedir orçamento">Pedir orçamento →</a></article>
+            <article class="cat step"><div class="num">02</div><h3>Compare por compatibilidade</h3><p>Veja quem combina com categoria, orçamento, região e agenda.</p><a class="link-mono" href="#/talentos" data-soon="Lista de artistas">Ver artistas →</a></article>
+            <article class="cat step"><div class="num">03</div><h3>Contrate com segurança</h3><p>O pagamento fica retido e só é liberado após o evento.</p><a class="link-mono" href="#/painel" data-soon="Meu painel" data-needs-login>Meu painel →</a></article>
+          </div>
+        </div>
+      </section>
+
+      <!-- (D) Depoimentos · NOVO: resposta do artista -->
+      <section class="section section--dark" aria-labelledby="dep-title">
+        <div class="wrap">
+          <p class="eyebrow">(D) Depoimentos</p>
+          <h2 class="title" id="dep-title">Quem já contratou</h2>
+          <p class="as-artist" id="as-artist" hidden></p>
+
+          <div class="stack stack--reviews" id="reviews">
+            <article class="review" data-review-id="r1" data-artist-id="selva-ritmo" data-artist-name="Selva Ritmo">
+              <div class="stars" aria-label="5 de 5 estrelas">★★★★★</div>
+              <blockquote>“Pedi orçamento numa terça e no dia seguinte já tinha três propostas. Fechamos com o DJ e a pista não esvaziou.”</blockquote>
+              <p class="who">Marcos Tavares · Formatura · São Paulo</p>
+              <div class="reply-slot"></div>
+            </article>
+            <article class="review" data-review-id="r2" data-artist-id="sabor-de-quintal" data-artist-name="Sabor de Quintal">
+              <div class="stars" aria-label="5 de 5 estrelas">★★★★★</div>
+              <blockquote>“O comparativo por compatibilidade economizou dias de pesquisa. Chef, som e fotógrafo, tudo pelo mesmo lugar.”</blockquote>
+              <p class="who">Rafael Andrade · Confraternização corporativa</p>
+              <div class="reply-slot"></div>
+            </article>
+            <article class="review" data-review-id="r3" data-artist-id="mago-theo" data-artist-name="Mago Theo">
+              <div class="stars" aria-label="5 de 5 estrelas">★★★★★</div>
+              <blockquote>“O pagamento só liberou depois da festa, o que me deu muita segurança. O mágico foi o assunto da noite.”</blockquote>
+              <p class="who">Tainá Ribeiro · Aniversário de 40 anos</p>
+              <div class="reply-slot"></div>
+            </article>
+          </div>
+
+          <div class="cta">
+            <a class="btn btn--accent btn--lg" href="#/orcamento" data-soon="Pedir orçamento">Pedir orçamento</a>
+            <a class="btn btn--ghost btn--lg" href="#/talentos" data-soon="Lista de artistas">Explorar artistas</a>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer-home">
+        <a class="logo" href="#/">ArtConnect</a>
+        <p>© 2026 ArtConnect · Feito para artistas locais no Brasil</p>
+      </footer>
+    </div>
+
+    <!-- =====================  TELA 2 · LOGIN  ===================== -->
+    <div class="view" data-view="login" hidden>
+      <div class="auth-main">
+        <section class="auth" aria-labelledby="login-title">
+          <p class="auth-eyebrow">Acesse sua conta</p>
+          <h1 class="auth-title" id="login-title">Entrar no<br>seu painel</h1>
+          <p class="auth-lead">Acompanhe orçamentos, propostas e pagamentos em um só lugar.</p>
+
+          <form class="auth-card" id="login-form" novalidate>
+            <div class="field">
+              <label for="username">Usuário</label>
+              <input class="input" id="username" name="username" type="text" placeholder="Seu nome de usuário"
+                autocomplete="username" autocapitalize="none" spellcheck="false" required>
+            </div>
+            <div class="field">
+              <div class="label-row">
+                <label for="password">Senha</label>
+                <a class="link-small" href="#/recuperar-senha" data-soon="Recuperar senha">Esqueci a senha</a>
+              </div>
+              <input class="input" id="password" name="password" type="password" placeholder="••••••••"
+                autocomplete="current-password" minlength="6" required>
+            </div>
+            <label class="remember"><input type="checkbox" name="remember" id="remember"> Manter conectado neste dispositivo</label>
+            <p class="form-msg" id="login-msg" role="alert"></p>
+            <button class="btn btn--accent btn--wide" type="submit">Entrar</button>
+            <p class="signup">Ainda não tem conta? <a href="#/cadastro">Criar conta</a></p>
+          </form>
+          <p class="secure"><strong>Pagamento retido</strong> até o dia do evento.</p>
+        </section>
+      </div>
+      <footer class="footer-auth">© 2026 ArtConnect · Feito para artistas locais no Brasil</footer>
+    </div>
+
+    <!-- =====================  TELA 3 · CADASTRO  ===================== -->
+    <div class="view" data-view="cadastro" hidden>
+      <div class="auth-main">
+        <section class="auth" aria-labelledby="cad-title">
+          <p class="auth-eyebrow">Crie sua conta</p>
+          <h1 class="auth-title" id="cad-title">Entre para<br>o ArtConnect</h1>
+          <p class="auth-lead">Contrate artistas locais ou mostre o seu trabalho e receba avaliações.</p>
+
+          <form class="auth-card" id="cad-form" novalidate>
+            <fieldset class="seg-group">
+              <legend>Tipo de conta</legend>
+              <label class="seg"><input type="radio" name="tipo" value="cliente" checked><span>Quero contratar</span></label>
+              <label class="seg"><input type="radio" name="tipo" value="artista"><span>Sou artista</span></label>
+            </fieldset>
+
+            <div class="field">
+              <label for="c-nome">Nome completo</label>
+              <input class="input" id="c-nome" name="nome" type="text" placeholder="Seu nome" autocomplete="name" aria-describedby="e-nome">
+              <p class="field-error" id="e-nome"></p>
+            </div>
+            <div class="field">
+              <label for="c-usuario">Usuário</label>
+              <input class="input" id="c-usuario" name="usuario" type="text" placeholder="Escolha um nome de usuário" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="e-usuario">
+              <p class="field-error" id="e-usuario"></p>
+            </div>
+            <div class="field">
+              <label for="c-email">E-mail</label>
+              <input class="input" id="c-email" name="email" type="email" placeholder="voce@email.com" autocomplete="email" autocapitalize="none" spellcheck="false" aria-describedby="e-email">
+              <p class="field-error" id="e-email"></p>
+            </div>
+
+            <div class="field-pair" id="artist-fields" hidden>
+              <div class="field">
+                <label for="c-categoria">Categoria</label>
+                <select class="input" id="c-categoria" name="categoria" aria-describedby="e-categoria">
+                  <option value="">Selecione</option>
+                  <option>Chefs &amp; Buffet</option><option>Mágicos</option><option>DJs</option><option>Cantores</option><option>Foto &amp; Vídeo</option>
+                </select>
+                <p class="field-error" id="e-categoria"></p>
+              </div>
+              <div class="field">
+                <label for="c-cidade">Cidade</label>
+                <input class="input" id="c-cidade" name="cidade" type="text" placeholder="Onde você atua" autocomplete="address-level2" aria-describedby="e-cidade">
+                <p class="field-error" id="e-cidade"></p>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="c-senha">Senha</label>
+              <input class="input" id="c-senha" name="senha" type="password" placeholder="Mínimo de 6 caracteres" autocomplete="new-password" aria-describedby="e-senha">
+              <p class="field-error" id="e-senha"></p>
+            </div>
+            <div class="field">
+              <label for="c-senha2">Confirmar senha</label>
+              <input class="input" id="c-senha2" name="senha2" type="password" placeholder="Repita a senha" autocomplete="new-password" aria-describedby="e-senha2">
+              <p class="field-error" id="e-senha2"></p>
+            </div>
+
+            <div class="terms-wrap">
+              <label class="terms"><input type="checkbox" id="c-termos"> <span>Li e aceito os <a href="#/termos" data-soon="Termos de uso">termos de uso</a> e a política de privacidade.</span></label>
+              <p class="field-error" id="e-termos"></p>
+            </div>
+
+            <p class="form-msg" id="cad-msg" role="alert"></p>
+            <button class="btn btn--accent btn--wide" type="submit">Criar conta</button>
+            <p class="signup">Já tem conta? <a href="#/login">Entrar</a></p>
+          </form>
+          <p class="secure"><strong>Pagamento retido</strong> até o dia do evento.</p>
+        </section>
+      </div>
+      <footer class="footer-auth">© 2026 ArtConnect · Feito para artistas locais no Brasil</footer>
+    </div>
+
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+  /* ============================================================
+     PROTÓTIPO · tudo roda no navegador (localStorage), sem servidor.
+     Contas de teste (senha de todas: 123456):
+       selvaritmo     artista  -> responde às avaliações de "Selva Ritmo"
+       saborquintal   artista  -> responde às avaliações de "Sabor de Quintal"
+       magotheo       artista  -> responde às avaliações de "Mago Theo"
+       cliente        cliente  -> vê tudo, sem botões de resposta
+     No site real, login, cadastro e respostas vêm do banco de dados.
+     ============================================================ */
+  (function () {
+    var MAX = 500;
+    var K_USERS = 'artconnect_users_v1', K_REPLIES = 'artconnect_respostas_v1', K_SESSION = 'artconnect_session_v1';
+    var mem = {};
+
+    /* ---------- armazenamento (com reserva em memória) ---------- */
+    function lget(k) { try { var v = localStorage.getItem(k); return v === null ? null : JSON.parse(v); } catch (e) { return k in mem ? JSON.parse(mem[k]) : null; } }
+    function lset(k, v) { var s = JSON.stringify(v); mem[k] = s; try { localStorage.setItem(k, s); } catch (e) {} }
+    function getSession() {
+      try { var s = sessionStorage.getItem(K_SESSION); if (s) return JSON.parse(s); } catch (e) {}
+      return lget(K_SESSION) || (mem.sess ? JSON.parse(mem.sess) : null);
+    }
+    function setSession(u, remember) {
+      var data = u ? { usuario: u.usuario, nome: u.nome, tipo: u.tipo, artistId: u.artistId } : null;
+      try { sessionStorage.removeItem(K_SESSION); } catch (e) {}
+      try { localStorage.removeItem(K_SESSION); } catch (e) {}
+      delete mem[K_SESSION]; delete mem.sess;
+      if (!data) return;
+      mem.sess = JSON.stringify(data);
+      try { (remember ? localStorage : sessionStorage).setItem(K_SESSION, JSON.stringify(data)); } catch (e) {}
+    }
+
+    /* ---------- utilidades ---------- */
+    function $(s, r) { return (r || document).querySelector(s); }
+    function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function slug(s) { return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+    function fmt(iso) { try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); } catch (e) { return ''; } }
+    var toastT;
+    function toast(msg) { var t = $('#toast'); t.textContent = msg; t.classList.add('is-on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('is-on'); }, 3200); }
+
+    function sha(user, pass) {
+      var s = 'artconnect:' + user + ':' + pass;
+      if (window.crypto && crypto.subtle && window.TextEncoder) {
+        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function (b) {
+          return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+        });
+      }
+      return Promise.resolve('b64:' + btoa(unescape(encodeURIComponent(s))));
+    }
+
+    var SEED_USERS = [
+      { usuario: 'selvaritmo', nome: 'Selva Ritmo', email: 'selva@exemplo.com', tipo: 'artista', categoria: 'DJs', cidade: 'São Paulo', artistId: 'selva-ritmo' },
+      { usuario: 'saborquintal', nome: 'Sabor de Quintal', email: 'sabor@exemplo.com', tipo: 'artista', categoria: 'Chefs & Buffet', cidade: 'São Paulo', artistId: 'sabor-de-quintal' },
+      { usuario: 'magotheo', nome: 'Mago Theo', email: 'theo@exemplo.com', tipo: 'artista', categoria: 'Mágicos', cidade: 'São Paulo', artistId: 'mago-theo' },
+      { usuario: 'cliente', nome: 'Cliente Teste', email: 'cliente@exemplo.com', tipo: 'cliente', artistId: null }
+    ];
+    function loadUsers() {
+      var u = lget(K_USERS);
+      if (u) return Promise.resolve(u);
+      u = {};
+      return Promise.all(SEED_USERS.map(function (s) {
+        return sha(s.usuario, '123456').then(function (h) { var o = JSON.parse(JSON.stringify(s)); o.hash = h; u[s.usuario] = o; });
+      })).then(function () { lset(K_USERS, u); return u; });
+    }
+
+    /* ---------- respostas do artista ---------- */
+    var seedReplies = {
+      r1: { body: 'Valeu, Marcos! A pista da formatura estava incrível e a equipe de som ajudou demais. Foi um prazer fazer parte da noite. Quando precisar, é só chamar.', artistId: 'selva-ritmo', artistName: 'Selva Ritmo', at: '2026-10-12T14:20:00-03:00', edited: false },
+      r3: { body: 'Obrigado, Tainá! Foi muito especial entrar na festa dos 40. Fico feliz que a surpresa tenha rendido conversa a noite toda.', artistId: 'mago-theo', artistName: 'Mago Theo', at: '2026-10-20T09:05:00-03:00', edited: false }
+    };
+    var replies = lget(K_REPLIES) || JSON.parse(JSON.stringify(seedReplies));
+    function saveReplies() { lset(K_REPLIES, replies); }
+
+    function renderReview(card) {
+      var id = card.dataset.reviewId, r = replies[id], s = getSession();
+      var isOwner = !!(s && s.tipo === 'artista' && s.artistId && s.artistId === card.dataset.artistId);
+      var h = '';
+      if (r) {
+        h += '<div class="reply" role="group" aria-label="Resposta do artista">' +
+          '<div class="reply__head"><span class="reply__badge">Resposta do artista</span><span class="reply__name">' + esc(r.artistName) + '</span></div>' +
+          '<p class="reply__text">' + esc(r.body) + '</p>' +
+          '<p class="reply__meta">' + fmt(r.at) + (r.edited ? ' · editada' : '') + '</p></div>';
+      }
+      if (isOwner) {
+        h += '<div class="rp-actions">' + (r
+          ? '<button type="button" class="rp-btn" data-act="open">Editar resposta</button><button type="button" class="rp-btn rp-btn--danger" data-act="del">Excluir</button>'
+          : '<button type="button" class="rp-btn rp-btn--primary" data-act="open">Responder</button>') + '</div>' +
+          '<form class="rp-form" hidden novalidate>' +
+          '<label class="rp-label" for="rp-' + id + '">Sua resposta pública</label>' +
+          '<textarea class="rp-textarea" id="rp-' + id + '" maxlength="' + MAX + '" placeholder="Agradeça, esclareça algo ou conte como foi o evento. Todos vão ler."></textarea>' +
+          '<p class="rp-error" role="alert"></p>' +
+          '<div class="rp-foot"><span class="rp-count" aria-live="polite">0/' + MAX + '</span><span class="rp-btns">' +
+          '<button type="button" class="rp-btn" data-act="cancel">Cancelar</button>' +
+          '<button type="submit" class="rp-btn rp-btn--primary">Publicar resposta</button></span></div></form>' +
+          '<p class="rp-status" role="status" aria-live="polite"></p>';
+      }
+      $('.reply-slot', card).innerHTML = h;
+    }
+    function renderReviews() {
+      $$('.review').forEach(renderReview);
+      var s = getSession(), n = $('#as-artist');
+      if (s && s.tipo === 'artista') {
+        n.hidden = false;
+        n.innerHTML = 'Você entrou como <strong>' + esc(s.nome) + '</strong>. Responda às avaliações que recebeu: o botão aparece só nelas.';
+      } else { n.hidden = true; }
+    }
+    function updCount(ta) {
+      var c = $('.rp-count', ta.closest('form'));
+      c.textContent = ta.value.length + '/' + MAX; c.classList.toggle('is-near', ta.value.length >= MAX - 40);
+    }
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      var card = btn.closest('.review'), id = card.dataset.reviewId;
+      var form = $('.rp-form', card), actions = $('.rp-actions', card), ta = form && $('textarea', form), act = btn.dataset.act;
+      if (act === 'open') {
+        ta.value = replies[id] ? replies[id].body : ''; updCount(ta);
+        form.hidden = false; actions.hidden = true; ta.focus();
+      } else if (act === 'cancel') {
+        form.hidden = true; actions.hidden = false; $('[data-act="open"]', actions).focus();
+      } else if (act === 'del') {
+        if (btn.dataset.confirm !== '1') {
+          btn.dataset.confirm = '1'; btn.textContent = 'Confirmar exclusão';
+          setTimeout(function () { if (btn.isConnected) { btn.dataset.confirm = ''; btn.textContent = 'Excluir'; } }, 4000);
+          return;
+        }
+        delete replies[id]; saveReplies(); renderReview(card);
+        $('.rp-status', card).textContent = 'Resposta excluída.'; $('[data-act="open"]', card).focus();
+      }
+    });
+    document.addEventListener('input', function (e) { if (e.target.classList.contains('rp-textarea')) updCount(e.target); });
+    document.addEventListener('submit', function (e) {
+      var form = e.target.closest('.rp-form');
+      if (!form) return;
+      e.preventDefault();
+      var card = form.closest('.review'), id = card.dataset.reviewId, s = getSession();
+      var ta = $('textarea', form), err = $('.rp-error', form), body = ta.value.trim();
+      if (!s || s.tipo !== 'artista' || s.artistId !== card.dataset.artistId) { err.textContent = 'Só o artista desta avaliação pode responder.'; return; }
+      if (body.length < 5) { err.textContent = 'Escreva ao menos 5 caracteres.'; ta.focus(); return; }
+      var had = !!replies[id];
+      replies[id] = { body: body.slice(0, MAX), artistId: s.artistId, artistName: s.nome, at: new Date().toISOString(), edited: had };
+      saveReplies(); renderReview(card);
+      $('.rp-status', card).textContent = had ? 'Resposta atualizada.' : 'Resposta publicada.';
+      $('[data-act="open"]', card).focus();
+    });
+
+    /* ---------- navegação entre telas ---------- */
+    var TITLES = { home: 'ArtConnect · Contrate artistas locais', login: 'Entrar · ArtConnect', cadastro: 'Criar conta · ArtConnect' };
+    function route() {
+      var h = location.hash.replace(/^#\/?/, ''), v = (h === 'login' || h === 'cadastro') ? h : 'home';
+      if (v !== 'home' && getSession()) { v = 'home'; if (location.hash !== '#/') history.replaceState(null, '', '#/'); }
+      $$('.view').forEach(function (el) { el.hidden = el.dataset.view !== v; });
+      document.body.dataset.view = v; document.title = TITLES[v];
+      window.scrollTo(0, 0);
+      refreshHeader(); renderReviews();
+    }
+    function refreshHeader() { $('#logout').hidden = !getSession(); }
+    window.addEventListener('hashchange', route);
+
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('[data-soon]');
+      if (!a) return;
+      e.preventDefault();
+      if (a.hasAttribute('data-needs-login') && !getSession()) { location.hash = '#/login'; toast('Entre na sua conta para acessar o painel.'); return; }
+      toast('A tela “' + a.dataset.soon + '” ainda não foi criada neste protótipo.');
+    });
+    $('#logout').addEventListener('click', function () { setSession(null); toast('Você saiu da conta.'); route(); });
+
+    /* ---------- login ---------- */
+    $('#login-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var msg = $('#login-msg'), uEl = $('#username'), pEl = $('#password');
+      var user = uEl.value.trim().toLowerCase(), pass = pEl.value;
+      msg.textContent = '';
+      if (!user) { msg.textContent = 'Informe seu usuário.'; uEl.focus(); return; }
+      if (pass.length < 6) { msg.textContent = 'A senha tem pelo menos 6 caracteres.'; pEl.focus(); return; }
+      loadUsers().then(function (users) {
+        var u = users[user];
+        return sha(user, pass).then(function (h) {
+          if (!u || u.hash !== h) { msg.textContent = 'Usuário ou senha incorretos.'; pEl.value = ''; pEl.focus(); return; }
+          setSession(u, $('#remember').checked);
+          e.target.reset();
+          location.hash = '#/'; route();
+          toast('Bem-vindo, ' + u.nome.split(' ')[0] + '!');
+        });
+      });
+    });
+
+    /* ---------- cadastro ---------- */
+    var cad = $('#cad-form');
+    function tipo() { return cad.elements.tipo.value; }
+    $$('input[name="tipo"]', cad).forEach(function (r) { r.addEventListener('change', function () { $('#artist-fields').hidden = tipo() !== 'artista'; }); });
+    function setErr(id, field, text) {
+      $('#e-' + id).textContent = text || '';
+      var el = $(field); if (el) { if (text) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid'); }
+      return !text;
+    }
+    cad.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = cad.elements, nome = f.nome.value.trim(), usuario = f.usuario.value.trim().toLowerCase(), email = f.email.value.trim(),
+          senha = f.senha.value, senha2 = f.senha2.value, art = tipo() === 'artista';
+      var checks = [
+        ['nome', '#c-nome', nome.length < 3 ? 'Informe seu nome completo.' : ''],
+        ['usuario', '#c-usuario', !/^[a-z0-9_]{3,20}$/.test(usuario) ? 'Use de 3 a 20 letras minúsculas, números ou _.' : ''],
+        ['email', '#c-email', !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) ? 'Informe um e-mail válido.' : ''],
+        ['categoria', '#c-categoria', art && !f.categoria.value ? 'Escolha sua categoria.' : ''],
+        ['cidade', '#c-cidade', art && f.cidade.value.trim().length < 2 ? 'Informe a cidade onde atua.' : ''],
+        ['senha', '#c-senha', senha.length < 6 ? 'A senha precisa ter pelo menos 6 caracteres.' : ''],
+        ['senha2', '#c-senha2', senha2 !== senha ? 'As senhas não são iguais.' : ''],
+        ['termos', '#c-termos', !$('#c-termos').checked ? 'Aceite os termos para continuar.' : '']
+      ];
+      var firstBad = null;
+      checks.forEach(function (c) { if (!setErr(c[0], c[1], c[2]) && !firstBad) firstBad = c[1]; });
+      $('#cad-msg').textContent = '';
+      if (firstBad) { $(firstBad).focus(); return; }
+
+      loadUsers().then(function (users) {
+        if (users[usuario]) { setErr('usuario', '#c-usuario', 'Este usuário já existe. Escolha outro.'); $('#c-usuario').focus(); return; }
+        return sha(usuario, senha).then(function (h) {
+          var u = { usuario: usuario, nome: nome, email: email, tipo: art ? 'artista' : 'cliente', hash: h,
+                    categoria: art ? f.categoria.value : undefined, cidade: art ? f.cidade.value.trim() : undefined, artistId: art ? slug(nome) || usuario : null };
+          users[usuario] = u; lset(K_USERS, users);
+          setSession(u, false); cad.reset(); $('#artist-fields').hidden = true;
+          location.hash = '#/'; route();
+          toast('Conta criada! Bem-vindo, ' + nome.split(' ')[0] + '.');
+        });
+      });
+    });
+
+    route();
+  })();
+  </script>
+</body>
+</html>
