@@ -744,3 +744,23 @@ class TestPortfolio(BaseArtConnect):
         self.entrar("neonsombra")
         self.client.post("/artista/portfolio/" + str(item.id) + "/remover")
         self.assertFalse(Portfolio.objects.filter(id=item.id).exists())
+
+
+# ---------------------------------------------------------------
+# Senhas das contas da versão anterior (Flask)
+# ---------------------------------------------------------------
+class TestSenhaVersaoAnterior(TestCase):
+
+    def test_conta_antiga_entra_com_a_mesma_senha(self):
+        import hashlib
+        from django.contrib.auth.hashers import check_password
+        from ArtConnect.hashers import converter_senha_werkzeug
+        # mesmo formato que o Werkzeug (Flask) gerava
+        salt = "AbCdEfGh12345678"
+        hash_hex = hashlib.scrypt(b"minhasenha1", salt=salt.encode(), n=32768, r=8, p=1,
+                                  maxmem=132 * 32768 * 8).hex()
+        antigo = "scrypt:32768:8:1$" + salt + "$" + hash_hex
+        convertido = converter_senha_werkzeug(antigo)
+        self.assertLessEqual(len(convertido), 128)
+        self.assertTrue(check_password("minhasenha1", convertido))
+        self.assertFalse(check_password("outrasenha", convertido))

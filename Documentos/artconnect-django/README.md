@@ -54,6 +54,12 @@ python manage.py test
 
 O arquivo `render.yaml`, na raiz do repositório, publica esta pasta. Em produção, o Django usa o PostgreSQL indicado na variável `DATABASE_URL`. No computador, usa o SQLite.
 
+Ao subir, o site roda três comandos:
+
+1. `migrate` cria as tabelas.
+2. `importar_versao_flask` copia, uma única vez, tudo o que já existia no banco da versão anterior (Flask): contas com as mesmas senhas, artistas, pedidos, contratos, mensagens etc.
+3. `popular_banco` coloca os dados de exemplo, só se o banco ainda estiver vazio.
+
 ## Visual (Tailwind)
 
 O CSS final é `ArtConnect/static/style.css`, e ele já vai pronto no repositório. Só precisa compilar de novo se você usar uma classe do Tailwind que ainda não existe no site. A fonte do CSS está em `ArtConnect/static/src/input.css`.

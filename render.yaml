@@ -7,8 +7,9 @@ services:
     plan: free
     rootDir: Documentos/artconnect-django
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    # migrate cria as tabelas; popular_banco só coloca os dados de exemplo se o banco estiver vazio
-    startCommand: python manage.py migrate && python manage.py popular_banco && gunicorn ArtConnect.wsgi
+    # migrate cria as tabelas; importar_versao_flask copia (uma vez) os dados do site antigo;
+    # popular_banco só coloca os dados de exemplo se o banco ainda estiver vazio
+    startCommand: python manage.py migrate && python manage.py importar_versao_flask && python manage.py popular_banco && gunicorn ArtConnect.wsgi
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
