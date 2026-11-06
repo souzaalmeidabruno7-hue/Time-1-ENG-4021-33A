@@ -24,15 +24,15 @@ CATEGORIAS = [
     ("Arte Visual", "arte-visual", "Pintura ao vivo, murais e caricaturas"),
 ]
 
-# (username, nome, email, telefone, cidade, papel)
+# (username, nome, email, telefone, cidade, estado, data de nascimento, papel)
 USUARIOS = [
-    ("admin", "Administrador ArtConnect", "admin@artconnect.com.br", "(21) 90000-0000", "Rio de Janeiro", "admin"),
-    ("luiz", "Luiz Gullo", "luiz@exemplo.com", "(21) 98888-1111", "Rio de Janeiro", "cliente"),
-    ("helena", "Helena Prado", "helena@exemplo.com", "(11) 97777-2222", "São Paulo", "cliente"),
-    ("rafael", "Rafael Torres", "rafael@exemplo.com", "(21) 96666-3333", "Rio de Janeiro", "cliente"),
-    ("selvaritmo", "Selva Ritmo", "contato@selvaritmo.com", "(11) 95555-4444", "São Paulo", "artista"),
-    ("coletivomare", "Coletivo Maré", "contato@coletivomare.com", "(21) 94444-5555", "Rio de Janeiro", "artista"),
-    ("neonsombra", "Neon Sombra", "contato@neonsombra.com", "(11) 93333-6666", "São Paulo", "artista"),
+    ("admin", "Administrador ArtConnect", "admin@artconnect.com.br", "(21) 90000-0000", "Rio de Janeiro", "RJ", "1991-04-12", "admin"),
+    ("luiz", "Luiz Gullo", "luiz@exemplo.com", "(21) 98888-1111", "Rio de Janeiro", "RJ", "2006-03-08", "cliente"),
+    ("helena", "Helena Prado", "helena@exemplo.com", "(11) 97777-2222", "São Paulo", "SP", "1992-08-21", "cliente"),
+    ("rafael", "Rafael Torres", "rafael@exemplo.com", "(21) 96666-3333", "Rio de Janeiro", "RJ", "1998-01-30", "cliente"),
+    ("selvaritmo", "Selva Ritmo", "contato@selvaritmo.com", "(11) 95555-4444", "São Paulo", "SP", "1995-06-03", "artista"),
+    ("coletivomare", "Coletivo Maré", "contato@coletivomare.com", "(21) 94444-5555", "Rio de Janeiro", "RJ", "1997-11-17", "artista"),
+    ("neonsombra", "Neon Sombra", "contato@neonsombra.com", "(11) 93333-6666", "São Paulo", "SP", "2000-09-25", "artista"),
 ]
 
 # (username ou None, nome_artistico, slug_categoria, estilo, cidade, preco, descricao)
@@ -127,14 +127,15 @@ def popular(mostrar=True):
         Categoria.objects.create(nome=nome, slug=slug, descricao=descricao)
 
     avisar(mostrar, "Inserindo usuários...")
-    for username, nome, email, telefone, cidade, papel in USUARIOS:
+    for username, nome, email, telefone, cidade, estado, nascimento, papel in USUARIOS:
         novo = User.objects.create_user(username=username, email=email, password=SENHA_PADRAO)
         if papel == "admin":
             # o admin também entra no admin do Django (/django-admin/)
             novo.is_staff = True
             novo.is_superuser = True
             novo.save()
-        Perfil.objects.create(user=novo, nome=nome, telefone=telefone, cidade=cidade, papel=papel)
+        Perfil.objects.create(user=novo, nome=nome, telefone=telefone, cidade=cidade, estado=estado,
+                              data_nascimento=date.fromisoformat(nascimento), papel=papel)
 
     avisar(mostrar, "Inserindo artistas...")
     for username, nome, slug, estilo, cidade, preco, descricao in ARTISTAS:

@@ -29,9 +29,37 @@
         <input type="tel" name="telefone" value="{{ usuario.telefone }}" class="{{ ui.campo_claro }}">
       </label>
       <label class="block">
-        <span class="{{ ui.rotulo }}">Cidade</span>
-        <input type="text" name="cidade" value="{{ usuario.cidade }}" class="{{ ui.campo_claro }}">
+        <span class="{{ ui.rotulo }}">Estado</span>
+        <select name="estado" required class="{{ ui.campo_claro }}">
+          <option value="">Selecione o seu estado…</option>
+          {% for sigla, nome in estados %}
+            <option value="{{ sigla }}" {% if usuario.estado == sigla %}selected{% endif %}>{{ nome }} ({{ sigla }})</option>
+          {% endfor %}
+        </select>
       </label>
+      <div role="group" aria-labelledby="rotulo-nascimento" class="block">
+        <span id="rotulo-nascimento" class="{{ ui.rotulo }}">Nascimento</span>
+        <div class="grid gap-2" style="grid-template-columns: 0.8fr 1.4fr 1fr">
+          <select name="dia_nascimento" required autocomplete="bday-day" aria-label="Dia de nascimento" class="{{ ui.campo_claro }}">
+              <option value="">Dia</option>
+              {% for dia in dias %}
+                <option value="{{ dia }}" {% if usuario.data_nascimento.day == dia %}selected{% endif %}>{{ dia }}</option>
+              {% endfor %}
+            </select>
+            <select name="mes_nascimento" required aria-label="Mês de nascimento" class="{{ ui.campo_claro }}">
+            <option value="">Mês</option>
+            {% for numero, nome in meses %}
+              <option value="{{ numero }}" {% if usuario.data_nascimento.month == numero %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+          <select name="ano_nascimento" required aria-label="Ano de nascimento" class="{{ ui.campo_claro }}">
+            <option value="">Ano</option>
+            {% for ano in anos %}
+              <option value="{{ ano }}" {% if usuario.data_nascimento.year == ano %}selected{% endif %}>{{ ano }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
       <label class="block sm:col-span-2">
         <span class="{{ ui.rotulo }}">Nova senha</span>
         <input type="password" name="nova_senha" autocomplete="new-password" placeholder="Deixe em branco para manter a atual" class="{{ ui.campo_claro }}">

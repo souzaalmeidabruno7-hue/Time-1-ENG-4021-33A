@@ -15,6 +15,36 @@ PAPEIS = [
     ("admin", "Administrador"),
 ]
 
+# Os 27 estados do Brasil (sigla, nome), na ordem alfabética do nome
+ESTADOS = [
+    ("AC", "Acre"), ("AL", "Alagoas"), ("AP", "Amapá"), ("AM", "Amazonas"), ("BA", "Bahia"),
+    ("CE", "Ceará"), ("DF", "Distrito Federal"), ("ES", "Espírito Santo"), ("GO", "Goiás"),
+    ("MA", "Maranhão"), ("MT", "Mato Grosso"), ("MS", "Mato Grosso do Sul"), ("MG", "Minas Gerais"),
+    ("PA", "Pará"), ("PB", "Paraíba"), ("PR", "Paraná"), ("PE", "Pernambuco"), ("PI", "Piauí"),
+    ("RJ", "Rio de Janeiro"), ("RN", "Rio Grande do Norte"), ("RS", "Rio Grande do Sul"),
+    ("RO", "Rondônia"), ("RR", "Roraima"), ("SC", "Santa Catarina"), ("SP", "São Paulo"),
+    ("SE", "Sergipe"), ("TO", "Tocantins"),
+]
+SIGLAS_ESTADOS = [sigla for sigla, nome in ESTADOS]
+
+# idade mínima para ter conta: a plataforma tem contratos e pagamentos
+IDADE_MINIMA = 18
+IDADE_MAXIMA = 120
+
+MESES = [
+    (1, "Janeiro"), (2, "Fevereiro"), (3, "Março"), (4, "Abril"), (5, "Maio"), (6, "Junho"),
+    (7, "Julho"), (8, "Agosto"), (9, "Setembro"), (10, "Outubro"), (11, "Novembro"), (12, "Dezembro"),
+]
+
+
+def calcular_idade(nascimento, hoje):
+    """Idade em anos completos na data de hoje.
+    Se o aniversário deste ano ainda não chegou, a pessoa ainda tem um ano a menos."""
+    idade = hoje.year - nascimento.year
+    if (hoje.month, hoje.day) < (nascimento.month, nascimento.day):
+        idade = idade - 1
+    return idade
+
 TIPOS_EVENTO = [
     ("casamento", "Casamento"),
     ("corporativo", "Corporativo"),
@@ -128,6 +158,8 @@ class Perfil(models.Model):
     nome = models.CharField(max_length=120)
     telefone = models.CharField(max_length=30, blank=True)
     cidade = models.CharField(max_length=80, blank=True)
+    estado = models.CharField(max_length=2, choices=ESTADOS, blank=True)
+    data_nascimento = models.DateField(null=True, blank=True)
     papel = models.CharField(max_length=10, choices=PAPEIS, default="cliente")
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -137,6 +169,17 @@ class Perfil(models.Model):
 
     def __str__(self):
         return self.nome + " (" + self.user.username + ")"
+
+    @property
+    def idade(self):
+        """Calculada na hora, a partir da data de nascimento (None se a conta não informou)."""
+        if self.data_nascimento is None:
+            return None
+        return calcular_idade(self.data_nascimento, timezone.localdate())
+
+    @property
+    def menor_de_idade(self):
+        return self.idade is not None and self.idade < IDADE_MINIMA
 
 
 class Categoria(models.Model):

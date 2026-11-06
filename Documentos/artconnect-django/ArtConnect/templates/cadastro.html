@@ -49,7 +49,7 @@
           <input type="text" name="nome" value="{{ form.nome }}" autocomplete="name" placeholder="Ex.: Maria Souza" required minlength="3" class="{{ ui.campo_escuro }}">
         </label>
 
-        <label class="block sm:col-span-2">
+        <label class="block">
           <span class="{{ ui.rotulo_escuro }}">E-mail</span>
           <input type="email" name="email" value="{{ form.email }}" autocomplete="email" placeholder="voce@email.com" required class="{{ ui.campo_escuro }}">
         </label>
@@ -60,11 +60,46 @@
         </label>
 
         <label class="block">
-          <span class="{{ ui.rotulo_escuro }}">Cidade</span>
-          <input type="text" name="cidade" value="{{ form.cidade }}" autocomplete="address-level2" placeholder="Ex.: Rio de Janeiro" required class="{{ ui.campo_escuro }}">
+          <span class="{{ ui.rotulo_escuro }}">Estado</span>
+          <select name="estado" required autocomplete="address-level1" class="{{ ui.campo_escuro }}">
+            <option value="">Selecione o seu estado…</option>
+            {% for sigla, nome in estados %}
+              <option value="{{ sigla }}" {% if form.estado == sigla %}selected{% endif %}>{{ nome }} ({{ sigla }})</option>
+            {% endfor %}
+          </select>
         </label>
 
+        <div role="group" aria-labelledby="rotulo-nascimento" class="block">
+          <span id="rotulo-nascimento" class="{{ ui.rotulo_escuro }}">Nascimento</span>
+          <div class="grid gap-2" style="grid-template-columns: 0.8fr 1.4fr 1fr">
+            <select name="dia_nascimento" required autocomplete="bday-day" aria-label="Dia de nascimento" class="{{ ui.campo_escuro }}">
+              <option value="">Dia</option>
+              {% for dia in dias %}
+                <option value="{{ dia }}" {% if form.dia_nascimento == dia|stringformat:'s' %}selected{% endif %}>{{ dia }}</option>
+              {% endfor %}
+            </select>
+            <select name="mes_nascimento" required autocomplete="bday-month" aria-label="Mês de nascimento" class="{{ ui.campo_escuro }}">
+              <option value="">Mês</option>
+              {% for numero, nome in meses %}
+                <option value="{{ numero }}" {% if form.mes_nascimento == numero|stringformat:'s' %}selected{% endif %}>{{ nome }}</option>
+              {% endfor %}
+            </select>
+            <select name="ano_nascimento" required autocomplete="bday-year" aria-label="Ano de nascimento" class="{{ ui.campo_escuro }}">
+              <option value="">Ano</option>
+              {% for ano in anos %}
+                <option value="{{ ano }}" {% if form.ano_nascimento == ano|stringformat:'s' %}selected{% endif %}>{{ ano }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <span class="mt-1.5 block text-xs text-cream/40">É preciso ter ao menos {{ idade_minima }} anos.</span>
+        </div>
+
         <div id="campos-artista" class="hidden gap-5 sm:col-span-2 sm:grid-cols-2">
+          <label class="block sm:col-span-2">
+            <span class="{{ ui.rotulo_escuro }}">Cidade onde você se apresenta</span>
+            <input type="text" id="cidade" name="cidade" value="{{ form.cidade }}" autocomplete="address-level2" placeholder="Ex.: Rio de Janeiro" class="{{ ui.campo_escuro }}">
+            <span class="mt-1.5 block text-xs text-cream/40">A busca usa a cidade para mostrar você a quem tem evento perto.</span>
+          </label>
           <label class="block">
             <span class="{{ ui.rotulo_escuro }}">Categoria</span>
             <select id="categoria" name="categoria" class="{{ ui.campo_escuro }}">
@@ -114,6 +149,7 @@
     camposArtista.classList.toggle("hidden", !artista);
     camposArtista.classList.toggle("grid", artista);
     document.getElementById("categoria").required = artista;
+    document.getElementById("cidade").required = artista;
   }
   for (var i = 0; i < radios.length; i++) {
     radios[i].addEventListener("change", atualizarCampos);
