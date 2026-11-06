@@ -12,6 +12,13 @@ Todas usam a senha `artconnect123`.
 | selvaritmo | Artista | Painel do artista, propostas, agenda e portfólio |
 | admin | Administrador | Dashboard, usuários e fila de denúncias |
 
+## Criar conta
+
+- O estado é escolhido numa lista com os 27 estados do Brasil.
+- A data de nascimento é escolhida em três listas (dia, mês e ano). É preciso ter ao menos 18 anos para criar a conta.
+- Quem tem menos de 18 anos não consegue entrar, mesmo com a senha certa.
+- Quem escolhe "Ser contratado" (artista) também informa a cidade onde se apresenta, que a busca usa.
+
 ## Observações
 
 - O site está no plano grátis do Render. Depois de 15 minutos sem acesso ele "dorme", e a primeira abertura pode levar uns 50 segundos.
