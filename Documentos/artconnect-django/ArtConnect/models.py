@@ -37,11 +37,11 @@ MESES = [
 ]
 
 
-def calcular_idade(ano, mes, hoje):
-    """Idade em anos a partir do mês e do ano de nascimento.
-    Sem o dia, a pessoa conta como aniversariante a partir do primeiro dia do mês em que nasceu."""
-    idade = hoje.year - ano
-    if hoje.month < mes:
+def calcular_idade(nascimento, hoje):
+    """Idade em anos completos na data de hoje.
+    Se o aniversário deste ano ainda não chegou, a pessoa ainda tem um ano a menos."""
+    idade = hoje.year - nascimento.year
+    if (hoje.month, hoje.day) < (nascimento.month, nascimento.day):
         idade = idade - 1
     return idade
 
@@ -159,8 +159,7 @@ class Perfil(models.Model):
     telefone = models.CharField(max_length=30, blank=True)
     cidade = models.CharField(max_length=80, blank=True)
     estado = models.CharField(max_length=2, choices=ESTADOS, blank=True)
-    ano_nascimento = models.PositiveSmallIntegerField(null=True, blank=True)
-    mes_nascimento = models.PositiveSmallIntegerField(choices=MESES, null=True, blank=True)
+    data_nascimento = models.DateField(null=True, blank=True)
     papel = models.CharField(max_length=10, choices=PAPEIS, default="cliente")
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -173,10 +172,14 @@ class Perfil(models.Model):
 
     @property
     def idade(self):
-        """Calculada na hora, a partir do mês e do ano de nascimento (None se a conta não informou)."""
-        if self.ano_nascimento is None or self.mes_nascimento is None:
+        """Calculada na hora, a partir da data de nascimento (None se a conta não informou)."""
+        if self.data_nascimento is None:
             return None
-        return calcular_idade(self.ano_nascimento, self.mes_nascimento, timezone.localdate())
+        return calcular_idade(self.data_nascimento, timezone.localdate())
+
+    @property
+    def menor_de_idade(self):
+        return self.idade is not None and self.idade < IDADE_MINIMA
 
 
 class Categoria(models.Model):

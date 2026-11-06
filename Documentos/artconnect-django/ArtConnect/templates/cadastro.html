@@ -71,7 +71,13 @@
 
         <div role="group" aria-labelledby="rotulo-nascimento" class="block">
           <span id="rotulo-nascimento" class="{{ ui.rotulo_escuro }}">Nascimento</span>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid gap-2" style="grid-template-columns: 0.8fr 1.4fr 1fr">
+            <select name="dia_nascimento" required autocomplete="bday-day" aria-label="Dia de nascimento" class="{{ ui.campo_escuro }}">
+              <option value="">Dia</option>
+              {% for dia in dias %}
+                <option value="{{ dia }}" {% if form.dia_nascimento == dia|stringformat:'s' %}selected{% endif %}>{{ dia }}</option>
+              {% endfor %}
+            </select>
             <select name="mes_nascimento" required autocomplete="bday-month" aria-label="Mês de nascimento" class="{{ ui.campo_escuro }}">
               <option value="">Mês</option>
               {% for numero, nome in meses %}
