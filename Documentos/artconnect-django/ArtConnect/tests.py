@@ -116,14 +116,43 @@ class TestRotas(BaseArtConnect):
 
     def test_cadastro_de_cliente(self):
         dados = {"tipo": "contratante", "username": "maria", "nome": "Maria Lima", "email": "maria@x.com",
-                 "cidade": "Niterói", "senha": "12345678", "confirmar": "12345678", "termos": "on"}
+                 "estado": "RJ", "idade": "27", "senha": "12345678", "confirmar": "12345678", "termos": "on"}
         resposta = self.client.post("/cadastro", dados)
         self.assertEqual(resposta.status_code, 302)
-        self.assertEqual(Perfil.objects.get(user__username="maria").papel, "cliente")
+        perfil = Perfil.objects.get(user__username="maria")
+        self.assertEqual(perfil.papel, "cliente")
+        self.assertEqual(perfil.estado, "RJ")
+        self.assertEqual(perfil.get_estado_display(), "Rio de Janeiro")
+        self.assertEqual(perfil.idade, 27)
+
+    def test_cadastro_mostra_os_27_estados(self):
+        pagina = self.client.get("/cadastro").content.decode()
+        self.assertEqual(pagina.count('<option value="') - pagina.count('<option value=""'), 27 + Categoria.objects.count())
+        self.assertIn("Rio de Janeiro (RJ)", pagina)
+        self.assertIn("Tocantins (TO)", pagina)
+
+    def test_cadastro_recusa_estado_fora_da_lista_e_idade_invalida(self):
+        base = {"tipo": "contratante", "username": "ana", "nome": "Ana Lima", "email": "ana@x.com",
+                "senha": "12345678", "confirmar": "12345678", "termos": "on"}
+        casos = [
+            ({"estado": "Rio", "idade": "30"}, "Escolha o seu estado na lista."),
+            ({"estado": "", "idade": "30"}, "Escolha o seu estado na lista."),
+            ({"estado": "SP", "idade": ""}, "Informe a sua idade em anos."),
+            ({"estado": "SP", "idade": "vinte"}, "Informe a sua idade em anos."),
+            ({"estado": "SP", "idade": "17"}, "ao menos 18 anos"),
+            ({"estado": "SP", "idade": "200"}, "Informe uma idade válida."),
+        ]
+        for extra, mensagem in casos:
+            dados = dict(base)
+            dados.update(extra)
+            resposta = self.client.post("/cadastro", dados)
+            self.assertEqual(resposta.status_code, 400)
+            self.assertIn(mensagem, self.texto(resposta))
+        self.assertFalse(User.objects.filter(username="ana").exists())
 
     def test_cadastro_de_artista_com_preco_invalido_nao_cria_conta(self):
         dados = {"tipo": "artista", "username": "novo_dj", "nome": "Novo DJ", "email": "dj@x.com",
-                 "cidade": "Rio de Janeiro", "categoria": self.categoria("djs"), "preco": "abc",
+                 "estado": "RJ", "idade": "30", "cidade": "Rio de Janeiro", "categoria": self.categoria("djs"), "preco": "abc",
                  "senha": "12345678", "confirmar": "12345678", "termos": "on"}
         resposta = self.client.post("/cadastro", dados)
         self.assertEqual(resposta.status_code, 400)
@@ -135,9 +164,17 @@ class TestRotas(BaseArtConnect):
         self.assertEqual(resposta.status_code, 302)
         self.assertEqual(float(Artista.objects.get(user__username="novo_dj").preco_minimo), 1500)
 
+    def test_artista_precisa_informar_a_cidade(self):
+        dados = {"tipo": "artista", "username": "dj_sem_cidade", "nome": "DJ Sem Cidade", "email": "sc@x.com",
+                 "estado": "RJ", "idade": "30", "cidade": "", "categoria": self.categoria("djs"), "preco": "800",
+                 "senha": "12345678", "confirmar": "12345678", "termos": "on"}
+        resposta = self.client.post("/cadastro", dados)
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("Informe a cidade onde você se apresenta.", self.texto(resposta))
+
     def test_cadastro_duplicado(self):
         dados = {"tipo": "contratante", "username": "luiz", "nome": "Outro Luiz", "email": "outro@x.com",
-                 "cidade": "Rio", "senha": "12345678", "confirmar": "12345678", "termos": "on"}
+                 "estado": "RJ", "idade": "40", "senha": "12345678", "confirmar": "12345678", "termos": "on"}
         resposta = self.client.post("/cadastro", dados)
         self.assertEqual(resposta.status_code, 400)
         self.assertIn("já está cadastrado", self.texto(resposta))
@@ -169,10 +206,11 @@ class TestRotas(BaseArtConnect):
     def test_editar_perfil(self):
         self.entrar("luiz")
         self.client.post("/perfil/editar", {"nome": "Luiz R. Gullo", "email": "luiz@exemplo.com",
-                                            "telefone": "", "cidade": "Niterói", "nova_senha": ""})
+                                            "telefone": "", "estado": "SP", "idade": "21", "nova_senha": ""})
         perfil = Perfil.objects.get(user__username="luiz")
         self.assertEqual(perfil.nome, "Luiz R. Gullo")
-        self.assertEqual(perfil.cidade, "Niterói")
+        self.assertEqual(perfil.estado, "SP")
+        self.assertEqual(perfil.idade, 21)
 
     def test_exclusao_bloqueada_com_pagamento_retido(self):
         self.entrar("luiz")

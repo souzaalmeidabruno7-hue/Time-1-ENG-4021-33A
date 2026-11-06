@@ -21,7 +21,7 @@ from django.utils import timezone
 
 from ArtConnect.lembretes import gerar_lembretes
 from ArtConnect.match import calcular_compatibilidade
-from ArtConnect.models import (CATEGORIAS_SUPORTE, MOTIVOS_DENUNCIA, PRAZOS_SUPORTE, TIPOS_EVENTO, Artista, Avaliacao,
+from ArtConnect.models import (CATEGORIAS_SUPORTE, ESTADOS, IDADE_MAXIMA, IDADE_MINIMA, MOTIVOS_DENUNCIA, SIGLAS_ESTADOS, PRAZOS_SUPORTE, TIPOS_EVENTO, Artista, Avaliacao,
                                Cancelamento, Categoria, ChamadoSuporte, Contrato, Cupom, Denuncia, Disponibilidade,
                                Evento, Favorito, Mensagem, MensagemChamado, Notificacao, Pagamento, PedidoOrcamento,
                                Perfil, Portfolio, Proposta, TokenSenha)
@@ -423,8 +423,24 @@ def redefinir_senha(request, token):
 # ---------------------------------------------------------------
 # Cadastro de usuário
 # ---------------------------------------------------------------
+def validar_estado_e_idade(estado, idade_texto, erros):
+    """Confere o estado (uma das 27 siglas) e a idade. Devolve a idade como número, ou None."""
+    if estado not in SIGLAS_ESTADOS:
+        erros.append("Escolha o seu estado na lista.")
+    if not idade_texto.isdigit():
+        erros.append("Informe a sua idade em anos.")
+        return None
+    idade = int(idade_texto)
+    if idade < IDADE_MINIMA:
+        erros.append("É preciso ter ao menos " + str(IDADE_MINIMA) + " anos para criar uma conta.")
+    elif idade > IDADE_MAXIMA:
+        erros.append("Informe uma idade válida.")
+    return idade
+
+
 def cadastro(request):
     categorias = Categoria.objects.all()
+    contexto = {"categorias": categorias, "estados": ESTADOS, "idade_minima": IDADE_MINIMA, "idade_maxima": IDADE_MAXIMA}
 
     if request.method == "POST":
         form = request.POST
@@ -433,6 +449,8 @@ def cadastro(request):
         nome = form.get("nome", "").strip()
         email = form.get("email", "").strip().lower()
         telefone = form.get("telefone", "").strip()
+        estado = form.get("estado", "")
+        idade_texto = form.get("idade", "").strip()
         cidade = form.get("cidade", "").strip()
         categoria = form.get("categoria", "")
         preco = form.get("preco", "").strip()
@@ -446,8 +464,12 @@ def cadastro(request):
             erros.append("Informe seu nome completo.")
         if "@" not in email:
             erros.append("Informe um e-mail válido.")
-        if cidade == "":
-            erros.append("Informe sua cidade.")
+        idade = validar_estado_e_idade(estado, idade_texto, erros)
+        # a cidade só é pedida ao artista: é ela que a busca usa para achar artistas perto do evento
+        if tipo == "artista" and cidade == "":
+            erros.append("Informe a cidade onde você se apresenta.")
+        if tipo != "artista":
+            cidade = ""
         if tipo == "artista" and not categoria.isdigit():
             erros.append("Escolha uma categoria.")
         elif tipo == "artista" and not Categoria.objects.filter(id=categoria).exists():
@@ -479,7 +501,8 @@ def cadastro(request):
                 papel = "cliente"
                 if tipo == "artista":
                     papel = "artista"
-                Perfil.objects.create(user=usuario, nome=nome, telefone=telefone, cidade=cidade, papel=papel)
+                Perfil.objects.create(user=usuario, nome=nome, telefone=telefone, cidade=cidade, estado=estado,
+                                      idade=idade, papel=papel)
                 if tipo == "artista":
                     Artista.objects.create(user=usuario, nome_artistico=nome, categoria_id=categoria,
                                            cidade=cidade, preco_minimo=preco_minimo)
@@ -488,9 +511,11 @@ def cadastro(request):
 
         for erro in erros:
             messages.error(request, erro)
-        return render(request, "cadastro.html", {"categorias": categorias, "form": form}, status=400)
+        contexto["form"] = form
+        return render(request, "cadastro.html", contexto, status=400)
 
-    return render(request, "cadastro.html", {"categorias": categorias, "form": request.GET})
+    contexto["form"] = request.GET
+    return render(request, "cadastro.html", contexto)
 
 
 # ---------------------------------------------------------------
@@ -963,10 +988,12 @@ def editar_perfil(request):
         nome = request.POST.get("nome", "").strip()
         email = request.POST.get("email", "").strip().lower()
         telefone = request.POST.get("telefone", "").strip()
-        cidade = request.POST.get("cidade", "").strip()
+        estado = request.POST.get("estado", "")
+        idade_texto = request.POST.get("idade", "").strip()
         nova_senha = request.POST.get("nova_senha", "")
 
         erros = []
+        idade = validar_estado_e_idade(estado, idade_texto, erros)
         if len(nome) < 3:
             erros.append("Informe seu nome completo.")
         if "@" not in email:
@@ -979,7 +1006,8 @@ def editar_perfil(request):
         if len(erros) == 0:
             perfil.nome = nome
             perfil.telefone = telefone
-            perfil.cidade = cidade
+            perfil.estado = estado
+            perfil.idade = idade
             perfil.save()
             request.user.email = email
             if nova_senha != "":
@@ -994,7 +1022,8 @@ def editar_perfil(request):
         for erro in erros:
             messages.error(request, erro)
 
-    return render(request, "perfil_editar.html", {"usuario": perfil})
+    return render(request, "perfil_editar.html", {"usuario": perfil, "estados": ESTADOS,
+                                                  "idade_minima": IDADE_MINIMA, "idade_maxima": IDADE_MAXIMA})
 
 
 @login_required

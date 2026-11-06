@@ -26,7 +26,7 @@
           <thead class="border-b border-line">
             <tr class="{{ ui.rotulo }}">
               <th class="px-5 py-3 font-medium">Usuário</th><th class="px-5 py-3 font-medium">Nome</th><th class="px-5 py-3 font-medium">E-mail</th>
-              <th class="px-5 py-3 font-medium">Cidade</th><th class="px-5 py-3 font-medium">Tipo</th><th class="px-5 py-3 font-medium">Desde</th>
+              <th class="px-5 py-3 font-medium">Estado</th><th class="px-5 py-3 font-medium">Idade</th><th class="px-5 py-3 font-medium">Tipo</th><th class="px-5 py-3 font-medium">Desde</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-line">
@@ -35,7 +35,8 @@
                 <td class="px-5 py-3 font-mono text-xs">{{ u.username }}</td>
                 <td class="px-5 py-3 font-semibold">{{ u.perfil.nome }}</td>
                 <td class="px-5 py-3 text-ink-soft">{{ u.email }}</td>
-                <td class="px-5 py-3 text-ink-soft">{{ u.perfil.cidade|default:'—' }}</td>
+                <td class="px-5 py-3 text-ink-soft">{{ u.perfil.get_estado_display|default:'—' }}</td>
+                <td class="px-5 py-3 text-ink-soft">{{ u.perfil.idade|default_if_none:'—' }}</td>
                 <td class="px-5 py-3">{% selo u.perfil.papel u.perfil.papel|tom_papel %}</td>
                 <td class="px-5 py-3 text-ink-soft">{{ u.perfil.criado_em|data_br }}</td>
               </tr>

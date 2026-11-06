@@ -29,8 +29,17 @@
         <input type="tel" name="telefone" value="{{ usuario.telefone }}" class="{{ ui.campo_claro }}">
       </label>
       <label class="block">
-        <span class="{{ ui.rotulo }}">Cidade</span>
-        <input type="text" name="cidade" value="{{ usuario.cidade }}" class="{{ ui.campo_claro }}">
+        <span class="{{ ui.rotulo }}">Estado</span>
+        <select name="estado" required class="{{ ui.campo_claro }}">
+          <option value="">Selecione o seu estado…</option>
+          {% for sigla, nome in estados %}
+            <option value="{{ sigla }}" {% if usuario.estado == sigla %}selected{% endif %}>{{ nome }} ({{ sigla }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="{{ ui.rotulo }}">Idade</span>
+        <input type="number" name="idade" value="{{ usuario.idade|default_if_none:'' }}" min="{{ idade_minima }}" max="{{ idade_maxima }}" step="1" inputmode="numeric" required class="{{ ui.campo_claro }}">
       </label>
       <label class="block sm:col-span-2">
         <span class="{{ ui.rotulo }}">Nova senha</span>
