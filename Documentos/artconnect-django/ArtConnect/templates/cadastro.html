@@ -69,11 +69,24 @@
           </select>
         </label>
 
-        <label class="block">
-          <span class="{{ ui.rotulo_escuro }}">Idade</span>
-          <input type="number" name="idade" value="{{ form.idade }}" min="{{ idade_minima }}" max="{{ idade_maxima }}" step="1" inputmode="numeric" placeholder="Ex.: 25" required class="{{ ui.campo_escuro }}">
+        <div role="group" aria-labelledby="rotulo-nascimento" class="block">
+          <span id="rotulo-nascimento" class="{{ ui.rotulo_escuro }}">Nascimento</span>
+          <div class="grid grid-cols-2 gap-3">
+            <select name="mes_nascimento" required autocomplete="bday-month" aria-label="Mês de nascimento" class="{{ ui.campo_escuro }}">
+              <option value="">Mês</option>
+              {% for numero, nome in meses %}
+                <option value="{{ numero }}" {% if form.mes_nascimento == numero|stringformat:'s' %}selected{% endif %}>{{ nome }}</option>
+              {% endfor %}
+            </select>
+            <select name="ano_nascimento" required autocomplete="bday-year" aria-label="Ano de nascimento" class="{{ ui.campo_escuro }}">
+              <option value="">Ano</option>
+              {% for ano in anos %}
+                <option value="{{ ano }}" {% if form.ano_nascimento == ano|stringformat:'s' %}selected{% endif %}>{{ ano }}</option>
+              {% endfor %}
+            </select>
+          </div>
           <span class="mt-1.5 block text-xs text-cream/40">É preciso ter ao menos {{ idade_minima }} anos.</span>
-        </label>
+        </div>
 
         <div id="campos-artista" class="hidden gap-5 sm:col-span-2 sm:grid-cols-2">
           <label class="block sm:col-span-2">

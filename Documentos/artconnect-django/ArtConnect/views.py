@@ -21,10 +21,10 @@ from django.utils import timezone
 
 from ArtConnect.lembretes import gerar_lembretes
 from ArtConnect.match import calcular_compatibilidade
-from ArtConnect.models import (CATEGORIAS_SUPORTE, ESTADOS, IDADE_MAXIMA, IDADE_MINIMA, MOTIVOS_DENUNCIA, SIGLAS_ESTADOS, PRAZOS_SUPORTE, TIPOS_EVENTO, Artista, Avaliacao,
+from ArtConnect.models import (CATEGORIAS_SUPORTE, ESTADOS, IDADE_MAXIMA, IDADE_MINIMA, MESES, MOTIVOS_DENUNCIA, SIGLAS_ESTADOS, PRAZOS_SUPORTE, TIPOS_EVENTO, Artista, Avaliacao,
                                Cancelamento, Categoria, ChamadoSuporte, Contrato, Cupom, Denuncia, Disponibilidade,
                                Evento, Favorito, Mensagem, MensagemChamado, Notificacao, Pagamento, PedidoOrcamento,
-                               Perfil, Portfolio, Proposta, TokenSenha)
+                               Perfil, Portfolio, Proposta, TokenSenha, calcular_idade)
 from ArtConnect.politicas import calcular_desconto, dividir_valor, link_embed, percentual_reembolso
 from ArtConnect.selos import selos_do_artista
 from ArtConnect.templatetags.artconnect import data_br, moeda
@@ -423,24 +423,46 @@ def redefinir_senha(request, token):
 # ---------------------------------------------------------------
 # Cadastro de usuário
 # ---------------------------------------------------------------
-def validar_estado_e_idade(estado, idade_texto, erros):
-    """Confere o estado (uma das 27 siglas) e a idade. Devolve a idade como número, ou None."""
+def anos_de_nascimento():
+    """Anos que aparecem na lista: do mais recente que pode ter 18 anos até 120 anos atrás."""
+    ano_atual = hoje().year
+    anos = []
+    for ano in range(ano_atual - IDADE_MINIMA, ano_atual - IDADE_MAXIMA - 1, -1):
+        anos.append(ano)
+    return anos
+
+
+def contexto_nascimento():
+    return {"estados": ESTADOS, "meses": MESES, "anos": anos_de_nascimento(), "idade_minima": IDADE_MINIMA}
+
+
+def validar_estado_e_nascimento(estado, mes_texto, ano_texto, erros):
+    """Confere o estado (uma das 27 siglas), o mês e o ano de nascimento e a idade mínima.
+    Devolve (mes, ano) como números, ou (None, None) se estiverem errados."""
     if estado not in SIGLAS_ESTADOS:
         erros.append("Escolha o seu estado na lista.")
-    if not idade_texto.isdigit():
-        erros.append("Informe a sua idade em anos.")
-        return None
-    idade = int(idade_texto)
+    if not mes_texto.isdigit() or int(mes_texto) < 1 or int(mes_texto) > 12:
+        erros.append("Escolha o mês em que você nasceu.")
+        return None, None
+    if not ano_texto.isdigit():
+        erros.append("Escolha o ano em que você nasceu.")
+        return None, None
+    mes = int(mes_texto)
+    ano = int(ano_texto)
+    idade = calcular_idade(ano, mes, hoje())
+    if idade < 0 or idade > IDADE_MAXIMA:
+        erros.append("Escolha um ano de nascimento válido.")
+        return None, None
     if idade < IDADE_MINIMA:
         erros.append("É preciso ter ao menos " + str(IDADE_MINIMA) + " anos para criar uma conta.")
-    elif idade > IDADE_MAXIMA:
-        erros.append("Informe uma idade válida.")
-    return idade
+        return None, None
+    return mes, ano
 
 
 def cadastro(request):
     categorias = Categoria.objects.all()
-    contexto = {"categorias": categorias, "estados": ESTADOS, "idade_minima": IDADE_MINIMA, "idade_maxima": IDADE_MAXIMA}
+    contexto = contexto_nascimento()
+    contexto["categorias"] = categorias
 
     if request.method == "POST":
         form = request.POST
@@ -450,7 +472,8 @@ def cadastro(request):
         email = form.get("email", "").strip().lower()
         telefone = form.get("telefone", "").strip()
         estado = form.get("estado", "")
-        idade_texto = form.get("idade", "").strip()
+        mes_texto = form.get("mes_nascimento", "")
+        ano_texto = form.get("ano_nascimento", "")
         cidade = form.get("cidade", "").strip()
         categoria = form.get("categoria", "")
         preco = form.get("preco", "").strip()
@@ -464,7 +487,7 @@ def cadastro(request):
             erros.append("Informe seu nome completo.")
         if "@" not in email:
             erros.append("Informe um e-mail válido.")
-        idade = validar_estado_e_idade(estado, idade_texto, erros)
+        mes, ano = validar_estado_e_nascimento(estado, mes_texto, ano_texto, erros)
         # a cidade só é pedida ao artista: é ela que a busca usa para achar artistas perto do evento
         if tipo == "artista" and cidade == "":
             erros.append("Informe a cidade onde você se apresenta.")
@@ -502,7 +525,7 @@ def cadastro(request):
                 if tipo == "artista":
                     papel = "artista"
                 Perfil.objects.create(user=usuario, nome=nome, telefone=telefone, cidade=cidade, estado=estado,
-                                      idade=idade, papel=papel)
+                                      mes_nascimento=mes, ano_nascimento=ano, papel=papel)
                 if tipo == "artista":
                     Artista.objects.create(user=usuario, nome_artistico=nome, categoria_id=categoria,
                                            cidade=cidade, preco_minimo=preco_minimo)
@@ -989,11 +1012,12 @@ def editar_perfil(request):
         email = request.POST.get("email", "").strip().lower()
         telefone = request.POST.get("telefone", "").strip()
         estado = request.POST.get("estado", "")
-        idade_texto = request.POST.get("idade", "").strip()
+        mes_texto = request.POST.get("mes_nascimento", "")
+        ano_texto = request.POST.get("ano_nascimento", "")
         nova_senha = request.POST.get("nova_senha", "")
 
         erros = []
-        idade = validar_estado_e_idade(estado, idade_texto, erros)
+        mes, ano = validar_estado_e_nascimento(estado, mes_texto, ano_texto, erros)
         if len(nome) < 3:
             erros.append("Informe seu nome completo.")
         if "@" not in email:
@@ -1007,7 +1031,8 @@ def editar_perfil(request):
             perfil.nome = nome
             perfil.telefone = telefone
             perfil.estado = estado
-            perfil.idade = idade
+            perfil.mes_nascimento = mes
+            perfil.ano_nascimento = ano
             perfil.save()
             request.user.email = email
             if nova_senha != "":
@@ -1022,8 +1047,9 @@ def editar_perfil(request):
         for erro in erros:
             messages.error(request, erro)
 
-    return render(request, "perfil_editar.html", {"usuario": perfil, "estados": ESTADOS,
-                                                  "idade_minima": IDADE_MINIMA, "idade_maxima": IDADE_MAXIMA})
+    contexto = contexto_nascimento()
+    contexto["usuario"] = perfil
+    return render(request, "perfil_editar.html", contexto)
 
 
 @login_required

@@ -37,10 +37,23 @@
           {% endfor %}
         </select>
       </label>
-      <label class="block">
-        <span class="{{ ui.rotulo }}">Idade</span>
-        <input type="number" name="idade" value="{{ usuario.idade|default_if_none:'' }}" min="{{ idade_minima }}" max="{{ idade_maxima }}" step="1" inputmode="numeric" required class="{{ ui.campo_claro }}">
-      </label>
+      <div role="group" aria-labelledby="rotulo-nascimento" class="block">
+        <span id="rotulo-nascimento" class="{{ ui.rotulo }}">Nascimento</span>
+        <div class="grid grid-cols-2 gap-3">
+          <select name="mes_nascimento" required aria-label="Mês de nascimento" class="{{ ui.campo_claro }}">
+            <option value="">Mês</option>
+            {% for numero, nome in meses %}
+              <option value="{{ numero }}" {% if usuario.mes_nascimento == numero %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+          <select name="ano_nascimento" required aria-label="Ano de nascimento" class="{{ ui.campo_claro }}">
+            <option value="">Ano</option>
+            {% for ano in anos %}
+              <option value="{{ ano }}" {% if usuario.ano_nascimento == ano %}selected{% endif %}>{{ ano }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
       <label class="block sm:col-span-2">
         <span class="{{ ui.rotulo }}">Nova senha</span>
         <input type="password" name="nova_senha" autocomplete="new-password" placeholder="Deixe em branco para manter a atual" class="{{ ui.campo_claro }}">

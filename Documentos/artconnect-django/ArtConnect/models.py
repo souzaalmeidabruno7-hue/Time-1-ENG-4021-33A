@@ -31,6 +31,20 @@ SIGLAS_ESTADOS = [sigla for sigla, nome in ESTADOS]
 IDADE_MINIMA = 18
 IDADE_MAXIMA = 120
 
+MESES = [
+    (1, "Janeiro"), (2, "Fevereiro"), (3, "Março"), (4, "Abril"), (5, "Maio"), (6, "Junho"),
+    (7, "Julho"), (8, "Agosto"), (9, "Setembro"), (10, "Outubro"), (11, "Novembro"), (12, "Dezembro"),
+]
+
+
+def calcular_idade(ano, mes, hoje):
+    """Idade em anos a partir do mês e do ano de nascimento.
+    Sem o dia, a pessoa conta como aniversariante a partir do primeiro dia do mês em que nasceu."""
+    idade = hoje.year - ano
+    if hoje.month < mes:
+        idade = idade - 1
+    return idade
+
 TIPOS_EVENTO = [
     ("casamento", "Casamento"),
     ("corporativo", "Corporativo"),
@@ -145,7 +159,8 @@ class Perfil(models.Model):
     telefone = models.CharField(max_length=30, blank=True)
     cidade = models.CharField(max_length=80, blank=True)
     estado = models.CharField(max_length=2, choices=ESTADOS, blank=True)
-    idade = models.PositiveSmallIntegerField(null=True, blank=True)
+    ano_nascimento = models.PositiveSmallIntegerField(null=True, blank=True)
+    mes_nascimento = models.PositiveSmallIntegerField(choices=MESES, null=True, blank=True)
     papel = models.CharField(max_length=10, choices=PAPEIS, default="cliente")
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -155,6 +170,13 @@ class Perfil(models.Model):
 
     def __str__(self):
         return self.nome + " (" + self.user.username + ")"
+
+    @property
+    def idade(self):
+        """Calculada na hora, a partir do mês e do ano de nascimento (None se a conta não informou)."""
+        if self.ano_nascimento is None or self.mes_nascimento is None:
+            return None
+        return calcular_idade(self.ano_nascimento, self.mes_nascimento, timezone.localdate())
 
 
 class Categoria(models.Model):
