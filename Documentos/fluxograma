@@ -1,7 +1,0 @@
-Cliente (Usuario) busca por Categoria e Cidade e encontra um Artista.
-Envia uma SolicitacaoOrcamento.
-O artista responde com uma Proposta.
-O cliente aceita, e isso gera uma Contratacao.
-O cliente paga, e o Pagamento fica RETIDO.
-O evento acontece, a contratação vira REALIZADA e o pagamento é LIBERADO.
-O cliente deixa uma Avaliacao, o artista pode dar uma RespostaAvaliacao, e a nota_media do artista é atualizada.
