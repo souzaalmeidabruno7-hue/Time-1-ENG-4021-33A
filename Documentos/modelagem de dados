@@ -1,0 +1,162 @@
+Diagrama de relacionamewntos
+Usuario 1──1 Artista
+Usuario 1──N SolicitacaoOrcamento
+Artista N──N Categoria        (via ArtistaCategoria)
+Artista 1──N MidiaPortfolio
+Artista 1──N Pacote
+Artista 1──N Show             (agenda pública)
+Artista 1──N Indisponibilidade
+Cidade  1──N Artista / Show / SolicitacaoOrcamento
+
+SolicitacaoOrcamento 1──N Proposta
+Proposta 1──1 Contratacao     (quando aceita)
+Contratacao 1──1 Pagamento    (retido até o evento)
+Contratacao 1──1 Avaliacao
+Avaliacao 1──0..1 RespostaAvaliacao
+
+Tabelas
+1. Usuario
+Campo	Tipo	Observação
+id	PK	
+nome	Texto	
+email	Email	único
+senha_hash	Texto	nunca guardar a senha em texto puro
+telefone	Texto	
+tipo	Escolha	CLIENTE, ARTISTA, ADMIN
+cidade_id	FK → Cidade	
+foto_url	URL	
+criado_em	Data/hora	
+ativo	Booleano	
+2. Artista
+Campo	Tipo	Observação
+id	PK	
+usuario_id	FK → Usuario	1 para 1
+nome_artistico	Texto	
+biografia	Texto longo	
+cidade_id	FK → Cidade	cidade base
+raio_atendimento_km	Número	
+preco_a_partir_de	Moeda	exibido no card
+nota_media	Decimal	calculada a partir das avaliações
+total_avaliacoes	Número	
+instagram / site	Texto / URL	
+verificado	Booleano	
+status	Escolha	PENDENTE, ATIVO, SUSPENSO
+3. Categoria
+Campo	Tipo	Observação
+id	PK	
+nome	Texto	Chefs & Buffet, Mágicos, DJs, Cantores, Foto & Vídeo
+slug	Texto	usado na URL
+icone_url	URL	
+4. ArtistaCategoria (tabela de ligação)
+Campo	Tipo
+id	PK
+artista_id	FK → Artista
+categoria_id	FK → Categoria
+5. Cidade
+Campo	Tipo
+id	PK
+nome	Texto
+uf	Texto (2)
+6. MidiaPortfolio
+Campo	Tipo	Observação
+id	PK	
+artista_id	FK → Artista	
+tipo	Escolha	FOTO, VIDEO, AUDIO
+url	URL	
+legenda	Texto	
+ordem	Número	
+7. Pacote (serviços e preços)
+Campo	Tipo	Observação
+id	PK	
+artista_id	FK → Artista	
+titulo	Texto	
+descricao	Texto longo	
+duracao_horas	Decimal	
+preco	Moeda	
+8. Show (agenda pública: locais e datas)
+Campo	Tipo	Observação
+id	PK	
+artista_id	FK → Artista	
+titulo	Texto	
+local_nome	Texto	
+endereco	Texto	
+cidade_id	FK → Cidade	
+data_hora	Data/hora	
+link_ingressos	URL	opcional
+publico	Booleano	
+9. Indisponibilidade
+Campo	Tipo
+id	PK
+artista_id	FK → Artista
+data_inicio	Data
+data_fim	Data
+motivo	Texto
+10. SolicitacaoOrcamento
+Campo	Tipo	Observação
+id	PK	
+cliente_id	FK → Usuario	
+artista_id	FK → Artista	direto, ou vazio se for aberto a vários
+categoria_id	FK → Categoria	
+cidade_id	FK → Cidade	
+tipo_evento	Texto	casamento, aniversário etc.
+data_evento	Data	
+num_convidados	Número	
+descricao	Texto longo	
+orcamento_max	Moeda	opcional
+status	Escolha	ABERTA, RESPONDIDA, FECHADA, CANCELADA
+criado_em	Data/hora	
+11. Proposta
+Campo	Tipo	Observação
+id	PK	
+solicitacao_id	FK → SolicitacaoOrcamento	
+artista_id	FK → Artista	
+pacote_id	FK → Pacote	opcional
+valor	Moeda	
+mensagem	Texto longo	
+validade	Data	
+status	Escolha	ENVIADA, ACEITA, RECUSADA, EXPIRADA
+12. Contratacao
+Campo	Tipo	Observação
+id	PK	
+proposta_id	FK → Proposta	única
+cliente_id	FK → Usuario	
+artista_id	FK → Artista	
+data_evento	Data	
+valor_total	Moeda	
+taxa_plataforma	Moeda	
+status	Escolha	CONFIRMADA, REALIZADA, CANCELADA, EM_DISPUTA
+13. Pagamento (retido até o dia do evento)
+Campo	Tipo	Observação
+id	PK	
+contratacao_id	FK → Contratacao	
+valor	Moeda	
+metodo	Escolha	PIX, CARTAO, BOLETO
+status	Escolha	PENDENTE, RETIDO, LIBERADO, REEMBOLSADO
+pago_em	Data/hora	
+liberar_em	Data	normalmente o dia do evento
+liberado_em	Data/hora	
+id_gateway	Texto	referência do meio de pagamento
+14. Avaliacao (depoimentos)
+Campo	Tipo	Observação
+id	PK	
+contratacao_id	FK → Contratacao	única: só avalia quem contratou
+cliente_id	FK → Usuario	
+artista_id	FK → Artista	
+nota	Número (1 a 5)	
+comentario	Texto longo	
+criado_em	Data/hora	
+visivel	Booleano	para moderação
+15. RespostaAvaliacao
+Campo	Tipo	Observação
+id	PK	
+avaliacao_id	FK → Avaliacao	única: 1 resposta por avaliação
+artista_id	FK → Artista	
+texto	Texto longo	
+criado_em	Data/hora	
+editado_em	Data/hora	
+16. Favorito (opcional)
+Campo	Tipo
+id	PK
+cliente_id	FK → Usuario
+artista_id	FK → Artista
+
